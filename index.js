@@ -77,6 +77,11 @@ const elements = {
         sidebar: document.getElementById('settings-sidebar'),
         overlay: document.getElementById('settings-sidebar-overlay'),
         body: document.getElementById('settings-sidebar-body'),
+    },
+    snippetsSidebar: {
+        sidebar: document.getElementById('snippets-sidebar'),
+        overlay: document.getElementById('snippets-sidebar-overlay'),
+        body: document.getElementById('snippets-sidebar-body'),
     }
 };
 
@@ -773,18 +778,41 @@ function insertSnippet() {
         showNotification('No snippets available for this tab.', 'info');
         return;
     }
-    const listHTML = items.map((s, idx) => `
+    
+    const tabIcon = currentTab === 'html' ? 'fab fa-html5' : (currentTab === 'css' ? 'fab fa-css3-alt' : 'fab fa-js');
+    const tabName = currentTab.toUpperCase();
+    
+    const listHTML = `
+        <div class="snippets-header-info">
+            <div class="snippets-tab-badge">
+                <i class="${tabIcon}"></i>
+                <span>${tabName} SNIPPETS</span>
+            </div>
+            <div class="snippets-count">${items.length} available</div>
+        </div>
+        <div class="snippets-list">
+            ${items.map((s, idx) => `
                 <div class="snippet-item" onclick="insertSnippetCode(${idx})">
                     <div class="snippet-name">
-                        <i class="fas fa-code"></i>
-                        ${s.name}
+                        <i class="fas fa-code setting-icon"></i>
+                        <span>${s.name}</span>
                     </div>
-                    <div class="snippet-code">${s.code.length > 100 ? s.code.substring(0, 100) + '...' : s.code}</div>
+                    <div class="snippet-code">${s.code.length > 150 ? s.code.substring(0, 150) + '...' : s.code}</div>
                 </div>
-            `).join('');
+            `).join('')}
+        </div>
+    `;
 
-    showCustomModal('INJECT FRAGMENT', listHTML, null, 'snippets-modal');
+    elements.snippetsSidebar.body.innerHTML = listHTML;
+    elements.snippetsSidebar.sidebar.classList.add('active');
+    elements.snippetsSidebar.overlay.classList.add('active');
 }
+
+function closeSnippetsSidebar() {
+    elements.snippetsSidebar.sidebar.classList.remove('active');
+    elements.snippetsSidebar.overlay.classList.remove('active');
+}
+window.closeSnippetsSidebar = closeSnippetsSidebar;
 
 function insertSnippetCode(index) {
     const s = window.codeSnippets[currentTab][index];
@@ -793,7 +821,7 @@ function insertSnippetCode(index) {
     const op = { range: selection, text: s.code, forceMoveMarkers: true };
     editor.executeEdits("snippet-insert", [op]);
     editor.focus();
-    closeModal();
+    closeSnippetsSidebar();
 }
 
 // --- Settings & Utils ---
