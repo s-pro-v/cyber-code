@@ -41,8 +41,14 @@
                 <!-- Dynamic Content -->
             </div>
             <div class="modal-actions" id="modal-actions">
-                <button id="modal-cancel-btn" class="btn">Cancel</button>
-                <button id="modal-confirm-btn" class="btn btn-primary">Confirm</button>
+                <button type="button" id="modal-cancel-btn" class="btn modal-action-btn">
+                    <i class="fas fa-xmark modal-action-btn__icon" aria-hidden="true"></i>
+                    <span class="modal-action-btn__label">CANCEL</span>
+                </button>
+                <button type="button" id="modal-confirm-btn" class="btn btn-primary modal-action-btn">
+                    <i class="fas fa-check modal-action-btn__icon" id="modal-confirm-icon" aria-hidden="true"></i>
+                    <span class="modal-action-btn__label">CONFIRM</span>
+                </button>
             </div>
         </div>
     </div>
@@ -52,8 +58,8 @@
     <div id="settings-sidebar" class="settings-sidebar">
         <div class="settings-sidebar-header">
             <span class="settings-sidebar-title">EDITOR CONFIG</span>
-            <button class="btn-icon" onclick="closeSettingsSidebar()"
-                style="background:none; border:none; color:inherit; cursor:pointer;">
+            <button type="button" class="btn-icon close-settings" onclick="closeSettingsSidebar()"
+                aria-label="Close settings">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -135,13 +141,19 @@
                 <button id="new-btn" class="btn" title="New Project (Ctrl+N)"><i class="fas fa-plus"></i></button>
                 <button id="load-btn" class="btn" title="Open Project (Ctrl+O)"><i
                         class="fas fa-folder-open"></i></button>
-                <button id="save-btn" class="btn btn-primary" title="Save Project (Ctrl+S)"><i class="fas fa-save"></i>
-                    Save</button>
+                <button id="save-btn" class="btn btn-primary" title="Save Project (Ctrl+S)"><i
+                        class="fas fa-save"></i><span class="btn-label"></span></button>
                 <button id="download-btn" class="btn" title="Download HTML"><i class="fas fa-download"></i></button>
-                <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 5px;"></div>
+                <button id="export-projects-btn" class="btn" title="Eksport zapisanych projektów (JSON)"><i
+                        class="fas fa-file-export"></i></button>
+                <input type="file" id="import-projects-input" accept=".json,application/json" hidden
+                    aria-label="Import projektów z pliku JSON">
+                <button id="import-projects-btn" class="btn" title="Import projektów z pliku JSON"><i
+                        class="fas fa-file-import"></i></button>
+                <div class="separator"></div>
                 <button id="settings-btn" class="btn" title="Settings"><i class="fas fa-cog"></i></button>
                 <button id="shortcuts-btn" class="btn" title="Shortcuts (F1)"><i class="fas fa-keyboard"></i></button>
-                <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 5px;"></div>
+                <div class="separator"></div>
                 <button id="view-editor-btn" class="btn btn-icon" title="Editor Only"><i
                         class="fas fa-code"></i></button>
                 <button id="view-preview-btn" class="btn btn-icon" title="Preview Only"><i
@@ -159,14 +171,61 @@
                 <!-- Left Pane: Editor -->
                 <div class="data-pane" id="editor-pane">
                     <div class="pane-header">
-                        <div class="tab-group">
-                            <div class="editor-tab active" data-tab="html"><i class="fab fa-html5"
-                                    style="color: #e34c26;"></i> HTML</div>
-                            <div class="editor-tab" data-tab="css"><i class="fab fa-css3-alt"
-                                    style="color: #264de4;"></i> CSS</div>
-                            <div class="editor-tab" data-tab="js"><i class="fab fa-js" style="color: #f0db4f;"></i> JS
+                        <div class="pane-header-primary">
+                            <div class="tab-group">
+                                <div class="editor-tab active" data-tab="html"><i class="fab fa-html5"></i> HTML</div>
+                                <div class="editor-tab" data-tab="css"><i class="fab fa-css3-alt"></i> CSS</div>
+                                <div class="editor-tab" data-tab="js"><i class="fab fa-js"></i> JS</div>
+                            </div>
+                            <div class="toolbar-group">
+                                <div class="ja-select-wrap" id="syntaxSelectContainer">
+                                    <button type="button" class="ja-select-btn" id="syntaxSelectBtn"
+                                        aria-haspopup="listbox" aria-expanded="false" aria-controls="syntaxSelectList">
+                                        <span class="ja-select-display">
+                                            <img id="syntaxSelectIcon"
+                                                src="https://api.iconify.design/vscode-icons:file-type-html.svg"
+                                                width="20" height="20" alt="">
+                                            <span id="syntaxSelectLabel">HTML</span>
+                                        </span>
+                                        <span class="ja-select-arrow" aria-hidden="true">▼</span>
+                                    </button>
+                                    <div class="ja-select-list" id="syntaxSelectList" role="listbox">
+                                        <div class="ja-select-item" data-value="auto" data-label="Auto Detect"
+                                            role="option"><span class="ja-select-prefix">›</span><img
+                                                src="https://api.iconify.design/vscode-icons:file-type-json2.svg"
+                                                width="20" height="20" alt="">Auto Detect</div>
+                                        <div class="ja-select-item" data-value="plaintext" data-label="Plain Text"
+                                            role="option"><span class="ja-select-prefix">›</span><img
+                                                src="https://api.iconify.design/material-icon-theme:latexmk.svg"
+                                                width="20" height="20" alt="">Plain Text</div>
+                                        <div class="ja-select-item" data-value="javascript" data-label="JavaScript"
+                                            role="option"><span class="ja-select-prefix">›</span><img
+                                                src="https://api.iconify.design/material-icon-theme:javascript.svg"
+                                                width="20" height="20" alt="">JavaScript</div>
+                                        <div class="ja-select-item" data-value="json" data-label="JSON" role="option">
+                                            <span class="ja-select-prefix">›</span><img
+                                                src="https://api.iconify.design/vscode-icons:file-type-light-json.svg"
+                                                width="20" height="20" alt="">JSON
+                                        </div>
+                                        <div class="ja-select-item ja-selected" data-value="html" data-label="HTML"
+                                            role="option"><span class="ja-select-prefix">›</span><img
+                                                src="https://api.iconify.design/vscode-icons:file-type-html.svg"
+                                                width="20" height="20" alt="">HTML</div>
+                                        <div class="ja-select-item" data-value="css" data-label="CSS" role="option">
+                                            <span class="ja-select-prefix">›</span><img
+                                                src="https://api.iconify.design/vscode-icons:file-type-css2.svg"
+                                                width="20" height="20" alt="">CSS
+                                        </div>
+                                        <div class="ja-select-item" data-value="xml" data-label="XML" role="option">
+                                            <span class="ja-select-prefix">›</span><img
+                                                src="https://api.iconify.design/vscode-icons:file-type-xml.svg"
+                                                width="20" height="20" alt="">XML
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                        <div class="pane-toolbar-separator"></div>
                         <div class="pane-toolbar">
                             <button id="snippet-btn" class="btn btn-icon" title="Insert Snippet"><i
                                     class="fas fa-puzzle-piece"></i></button>
@@ -216,15 +275,16 @@
                 <span id="editor-status">SYSTEM ONLINE</span>
             </div>
             <div class="status-item">
-                <span id="file-status">Ready to code</span>
+                <span id="file-status" class="file-status" data-status="neutral">Ready to code</span>
             </div>
         </div>
 
     </div>
 
+    <!-- Motywy Monaco (terminal-dark / terminal-light) — repozytorium css-up -->
+    <script src="https://cdn.jsdelivr.net/gh/s-pro-v/css-up@main/style-monaco.js" crossorigin="anonymous"></script>
     <!-- Application Logic -->
     <script src="index.js"></script>
-    <script src="monaco-css.js"></script>
 </body>
 
 </html>

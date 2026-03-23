@@ -306,6 +306,7 @@ function initializeEditors() {
     // Check if Monaco is already loaded
     if (window.monaco) {
         console.log('Monaco already loaded, creating editors...');
+        configureMonacoCssSupport();
         createEditors();
         return;
     }
@@ -321,10 +322,20 @@ function initializeEditors() {
             console.warn('Theme definition function not found, using default theme');
         }
 
+        configureMonacoCssSupport();
         createEditors();
     }, (error) => {
         console.error('Failed to load Monaco Editor:', error);
         showNotification('Błąd ładowania edytora. Sprawdź połączenie internetowe.', 'error');
+    });
+}
+
+function configureMonacoCssSupport() {
+    if (!window.monaco?.languages?.css?.scssDefaults) return;
+
+    // Native CSS nesting is parsed correctly by Monaco SCSS language service.
+    monaco.languages.css.scssDefaults.setDiagnosticsOptions({
+        validate: true
     });
 }
 
@@ -363,7 +374,7 @@ function createEditors() {
         editors.css = monaco.editor.create(document.getElementById('css-editor'), {
             ...sharedEditorOptions,
             value: initialCss,
-            language: 'css',
+            language: 'scss',
         });
 
         editors.js = monaco.editor.create(document.getElementById('js-editor'), {
@@ -399,6 +410,8 @@ function createEditors() {
 
         console.log('Editors created successfully');
 
+        initSyntaxSelect();
+
         // Update preview and setup autosave
         updatePreview();
         setupAutoSave();
@@ -413,7 +426,7 @@ function createEditors() {
 
         // Show notification if content was restored
         if (initialHtml !== defaultContent.html || initialCss !== defaultContent.css || initialJs !== defaultContent.js) {
-            updateStatus('Restored previous session');
+            updateStatus('Restored previous session', 3000, 'success');
             showNotification('Previous session restored.', 'info');
         } else {
             showNotification('SYSTEM READY. Editor Loaded.', 'success');
@@ -442,6 +455,9 @@ function setupEventListeners() {
     document.getElementById('save-btn').addEventListener('click', saveProject);
     document.getElementById('load-btn').addEventListener('click', loadProject);
     document.getElementById('download-btn').addEventListener('click', downloadProject);
+    document.getElementById('export-projects-btn').addEventListener('click', exportSavedProjectsArchive);
+    document.getElementById('import-projects-btn').addEventListener('click', openImportProjectsPicker);
+    document.getElementById('import-projects-input').addEventListener('change', onImportProjectsFileSelected);
     elements.themeBtn.addEventListener('click', toggleTheme);
 
     document.getElementById('run-btn').addEventListener('click', runCode);
@@ -478,6 +494,12 @@ function setupEventListeners() {
         if (e.key === 'F1') { e.preventDefault(); showShortcuts(); }
         if (e.key === 'F5') { e.preventDefault(); refreshPreview(); }
 
+        if (e.key === 'Escape' && document.querySelector('.settings-sidebar .ja-select-list.ja-visible')) {
+            e.preventDefault();
+            closeAllSettingsJaSelects();
+            return;
+        }
+
         // Close any open modal with Escape
         if (e.key === 'Escape' && elements.modal.container.classList.contains('visible')) {
             e.preventDefault();
@@ -487,6 +509,107 @@ function setupEventListeners() {
 }
 
 // --- Core Functions ---
+
+/** Domyślny język Monaca wg zakładki (tryb „Auto”) */
+const SYNTAX_TAB_DEFAULTS = { html: 'html', css: 'scss', js: 'javascript' };
+
+function syncSyntaxSelectUI() {
+    const btn = document.getElementById('syntaxSelectBtn');
+    const list = document.getElementById('syntaxSelectList');
+    const icon = document.getElementById('syntaxSelectIcon');
+    const label = document.getElementById('syntaxSelectLabel');
+    if (!btn || !list || !icon || !label) return;
+
+    const tab = currentTab;
+    const ed = editors[tab];
+    const lang = ed?.getModel()?.getLanguageId() || SYNTAX_TAB_DEFAULTS[tab];
+    const def = SYNTAX_TAB_DEFAULTS[tab];
+
+    list.querySelectorAll('.ja-select-item').forEach((li) => {
+        li.classList.remove('ja-selected');
+        const v = li.dataset.value;
+        let sel = false;
+        if (v === 'auto') {
+            sel = lang === def;
+        } else if (v === 'css') {
+            sel = ['css', 'scss', 'less'].includes(lang);
+        } else {
+            sel = lang === v;
+        }
+        if (sel) li.classList.add('ja-selected');
+    });
+
+    const selected = list.querySelector('.ja-select-item.ja-selected');
+    if (selected) {
+        const img = selected.querySelector('img');
+        if (img) icon.src = img.src;
+        label.textContent = selected.dataset.label || selected.textContent.replace(/\s+/g, ' ').trim();
+    } else {
+        label.textContent = lang ? String(lang).toUpperCase() : '—';
+    }
+}
+
+function applySyntaxLanguage(value) {
+    const tab = currentTab;
+    const ed = editors[tab];
+    if (!ed || !window.monaco) return;
+    const model = ed.getModel();
+    if (!model) return;
+
+    const langId = value === 'auto' ? SYNTAX_TAB_DEFAULTS[tab] : value;
+    monaco.editor.setModelLanguage(model, langId);
+    syncSyntaxSelectUI();
+}
+
+function initSyntaxSelect() {
+    const wrap = document.getElementById('syntaxSelectContainer');
+    const btn = document.getElementById('syntaxSelectBtn');
+    const list = document.getElementById('syntaxSelectList');
+    if (!wrap || !btn || !list) return;
+
+    function closeSyntaxSelect() {
+        btn.classList.remove('ja-open');
+        list.classList.remove('ja-visible');
+        btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function openSyntaxSelect() {
+        document.querySelectorAll('#syntaxSelectContainer .ja-select-list.ja-visible').forEach((l) => {
+            if (l !== list) {
+                l.classList.remove('ja-visible');
+                l.previousElementSibling?.classList.remove('ja-open');
+            }
+        });
+        btn.classList.add('ja-open');
+        list.classList.add('ja-visible');
+        btn.setAttribute('aria-expanded', 'true');
+    }
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (list.classList.contains('ja-visible')) closeSyntaxSelect();
+        else openSyntaxSelect();
+    });
+
+    list.querySelectorAll('.ja-select-item').forEach((item) => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const value = item.dataset.value;
+            applySyntaxLanguage(value);
+            closeSyntaxSelect();
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!wrap.contains(e.target)) closeSyntaxSelect();
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeSyntaxSelect();
+    });
+
+    syncSyntaxSelectUI();
+}
 
 function switchTab(tab, tabElement) {
     currentTab = tab;
@@ -499,7 +622,8 @@ function switchTab(tab, tabElement) {
     // Resize Monaco when tab becomes visible
     if (editors[tab]) editors[tab].layout();
 
-    updateStatus(`Active: ${tab.toUpperCase()}`);
+    updateStatus(`Active: ${tab.toUpperCase()}`, 3000, 'info');
+    syncSyntaxSelectUI();
 }
 
 function updatePreview() {
@@ -525,7 +649,7 @@ function updatePreview() {
                 </html>
             `;
     elements.previewIframe.srcdoc = fullHtml;
-    updateStatus('Compiled.', 1000);
+    updateStatus('Compiled.', 1000, 'success');
 }
 
 function runCode() {
@@ -649,7 +773,7 @@ function loadProject() {
             const modified = p.modified || p.created;
             const category = p.category || 'Website';
             return `
-                <div class="info-card project-card-clickable" onclick="loadProjectByIndex(${originalIndex})" style="margin-bottom:10px; position: relative;" onmouseenter="this.querySelector('.delete-btn-container').style.opacity='1'" onmouseleave="this.querySelector('.delete-btn-container').style.opacity='0'">
+                <div class="info-card project-card-clickable" onclick="loadProjectByIndex(${originalIndex})" onmouseenter="this.querySelector('.delete-btn-container').style.opacity='1'" onmouseleave="this.querySelector('.delete-btn-container').style.opacity='0'">
                     <div class="card-header">
                         <span>${p.name}</span>
                         <span class="card-status">${new Date(modified).toLocaleDateString()}</span>
@@ -660,7 +784,7 @@ function loadProject() {
                             <i class="fas fa-clock"></i> ${new Date(modified).toLocaleTimeString()}
                         </span>
                     </div>
-                    <div class="delete-btn-container" style="position: absolute; top: 15px; right: 100px; opacity: 0; transition: opacity 0.2s ease;">
+                    <div class="delete-btn-container">
                         <button class="btn btn-icon btn-danger" onclick="event.stopPropagation(); deleteProject(${originalIndex});" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -669,7 +793,7 @@ function loadProject() {
             `;
         }).join('');
 
-        showCustomModal('LOAD ARCHIVE', listHTML);
+        showCustomModal('LOAD ARCHIVE', listHTML, null, 'load-archive-modal');
     } catch (e) {
         showNotification('Error loading projects: ' + e.message, 'error');
         console.error('Load error:', e);
@@ -749,6 +873,160 @@ function downloadProject() {
     showNotification('Export successful.', 'success');
 }
 
+// --- Import / export zapisanych projektów (localStorage savedProjects) ---
+const CYBER_PROJECTS_EXPORT_VERSION = 1;
+const CYBER_PROJECTS_FILE_MARKER = 'cyberCodeProjectsExport';
+
+/** Parsuje plik JSON: tablica lub obiekt z polem projects */
+function normalizeImportedProjects(data) {
+    let raw;
+    if (Array.isArray(data)) {
+        raw = data;
+    } else if (data && Array.isArray(data.projects)) {
+        raw = data.projects;
+    } else {
+        throw new Error('Nieprawidłowy format pliku (oczekiwano tablicy lub { projects: [...] }).');
+    }
+    return raw.map((p, i) => ({
+        id: typeof p.id === 'number' ? p.id : Date.now() + i,
+        name: String(p.name || `Project ${i + 1}`).trim() || `Project ${i + 1}`,
+        category: String(p.category || 'Website'),
+        html: String(p.html ?? ''),
+        css: String(p.css ?? ''),
+        js: String(p.js ?? ''),
+        created: p.created || new Date().toISOString(),
+        modified: p.modified || new Date().toISOString()
+    }));
+}
+
+function mergeProjectLists(existing, incoming) {
+    const out = existing.map((p) => ({ ...p }));
+    const names = new Set(out.map((p) => p.name.toLowerCase()));
+    incoming.forEach((p) => {
+        let name = p.name;
+        let n = 1;
+        while (names.has(name.toLowerCase())) {
+            name = `${p.name} (import ${n})`;
+            n += 1;
+        }
+        names.add(name.toLowerCase());
+        out.push({
+            ...p,
+            id: Date.now() + Math.floor(Math.random() * 1e9),
+            name,
+            modified: new Date().toISOString()
+        });
+    });
+    return out;
+}
+
+function exportSavedProjectsArchive() {
+    try {
+        const projects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
+        if (!projects.length) {
+            showNotification('Brak zapisanych projektów do eksportu.', 'warning');
+            return;
+        }
+        const payload = {
+            [CYBER_PROJECTS_FILE_MARKER]: true,
+            version: CYBER_PROJECTS_EXPORT_VERSION,
+            exportedAt: new Date().toISOString(),
+            projects
+        };
+        const json = JSON.stringify(payload, null, 2);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const d = new Date();
+        const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        a.href = url;
+        a.download = `cyber-code-projects-${stamp}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification(`Eksport: ${projects.length} projekt(ów).`, 'success');
+    } catch (e) {
+        showNotification('Eksport nie powiódł się: ' + e.message, 'error');
+        console.error(e);
+    }
+}
+
+let pendingImportProjects = null;
+
+function applyProjectsImport(mode) {
+    if (!pendingImportProjects || !pendingImportProjects.length) {
+        showNotification('Brak danych importu.', 'error');
+        return;
+    }
+    try {
+        const incoming = pendingImportProjects;
+        pendingImportProjects = null;
+
+        if (mode === 'replace') {
+            const base = Date.now();
+            const replaced = incoming.map((p, i) => ({
+                ...p,
+                id: base + i
+            }));
+            localStorage.setItem('savedProjects', JSON.stringify(replaced));
+            showNotification(`Zastąpiono bibliotekę: ${replaced.length} projekt(ów).`, 'success');
+            return;
+        }
+
+        const existing = JSON.parse(localStorage.getItem('savedProjects') || '[]');
+        const merged = mergeProjectLists(existing, incoming);
+        localStorage.setItem('savedProjects', JSON.stringify(merged));
+        showNotification(`Scalono: dodano ${incoming.length} projekt(ów) (łącznie ${merged.length}).`, 'success');
+    } catch (e) {
+        showNotification('Import nie powiódł się: ' + e.message, 'error');
+        console.error(e);
+    }
+}
+window.applyProjectsImport = applyProjectsImport;
+
+function openImportProjectsPicker() {
+    const input = document.getElementById('import-projects-input');
+    if (input) input.click();
+}
+
+function onImportProjectsFileSelected(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const data = JSON.parse(String(reader.result));
+            const projects = normalizeImportedProjects(data);
+            if (projects.length === 0) {
+                showNotification('Plik nie zawiera projektów.', 'warning');
+                return;
+            }
+            pendingImportProjects = projects;
+            const html = `
+                <p>Znaleziono <strong style="color:var(--highlight)">${projects.length}</strong> projekt(ów).</p>
+                <p style="margin-top:10px; font-size:0.85rem; color:var(--text-muted); line-height:1.4;">
+                    <strong>Scal</strong> — dopisz do istniejącej listy (powtarzające się nazwy dostaną sufiks <code>(import N)</code>).<br>
+                    <strong>Zastąp wszystko</strong> — usuń obecną bibliotekę i wstaw tylko import (nieodwracalne).
+                </p>
+                <div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+                    <button type="button" class="btn" onclick="closeModal(); applyProjectsImport('merge');">SCAL</button>
+                    <button type="button" class="btn btn-danger" onclick="closeModal(); applyProjectsImport('replace');">ZASTĄP WSZYSTKO</button>
+                </div>
+            `;
+            showCustomModal('IMPORT PROJEKTÓW', html, null, 'archive-modal');
+        } catch (e) {
+            pendingImportProjects = null;
+            showNotification('Nie można wczytać pliku: ' + e.message, 'error');
+            console.error(e);
+        }
+    };
+    reader.onerror = () => {
+        showNotification('Błąd odczytu pliku.', 'error');
+    };
+    reader.readAsText(file, 'UTF-8');
+}
+
 // --- Editor Features ---
 async function formatCode() {
     await editors[currentTab].getAction('editor.action.formatDocument').run();
@@ -778,10 +1056,10 @@ function insertSnippet() {
         showNotification('No snippets available for this tab.', 'info');
         return;
     }
-    
+
     const tabIcon = currentTab === 'html' ? 'fab fa-html5' : (currentTab === 'css' ? 'fab fa-css3-alt' : 'fab fa-js');
     const tabName = currentTab.toUpperCase();
-    
+
     const listHTML = `
         <div class="snippets-header-info">
             <div class="snippets-tab-badge">
@@ -947,6 +1225,150 @@ function getEditorOptions() {
 function loadSettings() {
     const saved = localStorage.getItem('codeEditorSettings');
     if (saved) editorSettings = { ...editorSettings, ...JSON.parse(saved) };
+}
+
+/** Zamyka wszystkie listy ja-select w sidebarze ustawień */
+function closeAllSettingsJaSelects() {
+    document.querySelectorAll('.settings-sidebar .ja-select-list.ja-visible').forEach((list) => {
+        list.classList.remove('ja-visible');
+        const btn = list.previousElementSibling;
+        if (btn && btn.classList.contains('ja-select-btn')) {
+            btn.classList.remove('ja-open');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+        const wrap = list.closest('.ja-select-wrap');
+        if (wrap) wrap.classList.remove('ja-select-open');
+    });
+}
+
+let _settingsJaSelectDocBound = false;
+function bindSettingsJaSelectOutsideOnce() {
+    if (_settingsJaSelectDocBound) return;
+    _settingsJaSelectDocBound = true;
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.settings-sidebar .ja-select-wrap')) {
+            closeAllSettingsJaSelects();
+        }
+    });
+}
+
+/**
+ * Zamienia natywne <select class="setting-select-input"> na markup ja-select (jak reszta UI).
+ * Zachowuje atrybut onchange na <select> — dispatchEvent('change') go wywołuje.
+ */
+function initSettingJaSelects(root) {
+    if (!root) return;
+    bindSettingsJaSelectOutsideOnce();
+
+    root.querySelectorAll('select.setting-select-input:not([data-ja-select-init])').forEach((sel) => {
+        sel.setAttribute('data-ja-select-init', '1');
+
+        const wrap = document.createElement('div');
+        wrap.className = 'ja-select-wrap';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ja-select-btn';
+        btn.setAttribute('aria-haspopup', 'listbox');
+        btn.setAttribute('aria-expanded', 'false');
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'ja-select-value';
+
+        const arrow = document.createElement('span');
+        arrow.className = 'ja-select-arrow';
+        arrow.setAttribute('aria-hidden', 'true');
+        arrow.textContent = '▼';
+
+        btn.appendChild(labelSpan);
+        btn.appendChild(arrow);
+
+        const list = document.createElement('div');
+        list.className = 'ja-select-list';
+        list.setAttribute('role', 'listbox');
+
+        function syncFromSelect() {
+            const opt = sel.options[sel.selectedIndex];
+            labelSpan.textContent = opt ? opt.textContent.trim() : '';
+            list.querySelectorAll('.ja-select-item').forEach((el) => {
+                const v = el.getAttribute('data-value');
+                el.classList.toggle('ja-selected', v === sel.value);
+            });
+        }
+
+        Array.from(sel.options).forEach((opt) => {
+            const item = document.createElement('div');
+            item.className = 'ja-select-item' + (opt.selected ? ' ja-selected' : '');
+            item.setAttribute('role', 'option');
+            item.setAttribute('data-value', opt.value);
+
+            const prefix = document.createElement('span');
+            prefix.className = 'ja-select-prefix';
+            prefix.textContent = '›';
+
+            const text = document.createElement('span');
+            text.textContent = opt.textContent.trim();
+
+            item.appendChild(prefix);
+            item.appendChild(text);
+
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (sel.value === opt.value) {
+                    closeList();
+                    return;
+                }
+                sel.value = opt.value;
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+                syncFromSelect();
+                closeList();
+            });
+
+            list.appendChild(item);
+        });
+
+        sel.classList.add('ja-select-native');
+        sel.setAttribute('tabindex', '-1');
+
+        sel.parentNode.insertBefore(wrap, sel);
+        wrap.appendChild(btn);
+        wrap.appendChild(list);
+        wrap.appendChild(sel);
+
+        syncFromSelect();
+
+        function closeList() {
+            btn.classList.remove('ja-open');
+            list.classList.remove('ja-visible');
+            btn.setAttribute('aria-expanded', 'false');
+            wrap.classList.remove('ja-select-open');
+        }
+
+        function openList() {
+            document.querySelectorAll('.settings-sidebar .ja-select-wrap .ja-select-list.ja-visible').forEach((l) => {
+                if (l !== list) {
+                    l.classList.remove('ja-visible');
+                    const b = l.previousElementSibling;
+                    if (b && b.classList.contains('ja-select-btn')) {
+                        b.classList.remove('ja-open');
+                        b.setAttribute('aria-expanded', 'false');
+                    }
+                    const w = l.closest('.ja-select-wrap');
+                    if (w) w.classList.remove('ja-select-open');
+                }
+            });
+            btn.classList.add('ja-open');
+            list.classList.add('ja-visible');
+            btn.setAttribute('aria-expanded', 'true');
+            wrap.classList.add('ja-select-open');
+        }
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (list.classList.contains('ja-visible')) closeList();
+            else openList();
+        });
+    });
 }
 
 function showSettings() {
@@ -1351,17 +1773,20 @@ function showSettings() {
                 </div>
             `;
     elements.settingsSidebar.body.innerHTML = html;
+    initSettingJaSelects(elements.settingsSidebar.body);
     elements.settingsSidebar.sidebar.classList.add('active');
     elements.settingsSidebar.overlay.classList.add('active');
 }
 
 function closeSettingsSidebar() {
+    closeAllSettingsJaSelects();
     elements.settingsSidebar.sidebar.classList.remove('active');
     elements.settingsSidebar.overlay.classList.remove('active');
 }
 window.closeSettingsSidebar = closeSettingsSidebar;
 
 function switchSettingsTab(tab) {
+    closeAllSettingsJaSelects();
     // Hide all tab contents
     document.querySelectorAll('.settings-tab-content').forEach(content => {
         content.classList.remove('active');
@@ -1420,9 +1845,14 @@ function showShortcuts() {
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                         <div><strong style="color:var(--highlight)">Ctrl + S</strong> Save</div>
                         <div><strong style="color:var(--highlight)">Ctrl + Enter</strong> Run</div>
+                        <div><strong style="color:var(--highlight)">Ctrl + N</strong> New</div>
+                        <div><strong style="color:var(--highlight)">Ctrl + O</strong> Load</div>
                         <div><strong style="color:var(--highlight)">F1</strong> Shortcuts</div>
                         <div><strong style="color:var(--highlight)">Ctrl + T</strong> Theme</div>
                     </div>
+                    <p style="margin-top:12px; font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
+                        Eksport / import zapisanych projektów (JSON): ikony <i class="fas fa-file-export"></i> / <i class="fas fa-file-import"></i> na pasku.
+                    </p>
                 </div>
              `;
     showCustomModal('KEY BINDINGS', html, null, 'keybindings-modal');
@@ -1503,7 +1933,7 @@ function switchView(view) {
         });
     }, 100);
 
-    updateStatus(`View: ${view.toUpperCase()}`);
+    updateStatus(`View: ${view.toUpperCase()}`, 3000, 'info');
 }
 
 function loadView() {
@@ -1569,9 +1999,19 @@ function configureBracketColors() {
 }
 
 // --- UI Utils ---
-function updateStatus(msg, dur = 3000) {
+const FILE_STATUS_DEFAULT_MSG = 'Ready to code';
+let fileStatusRestoreTimer = null;
+
+/** @param {'neutral'|'success'|'warning'|'error'|'info'|'highlight'} [kind] */
+function updateStatus(msg, dur = 3000, kind = 'neutral') {
+    if (fileStatusRestoreTimer) clearTimeout(fileStatusRestoreTimer);
     elements.fileStatus.textContent = msg;
-    setTimeout(() => elements.fileStatus.textContent = 'Ready.', dur);
+    elements.fileStatus.setAttribute('data-status', kind);
+    fileStatusRestoreTimer = setTimeout(() => {
+        elements.fileStatus.textContent = FILE_STATUS_DEFAULT_MSG;
+        elements.fileStatus.setAttribute('data-status', 'neutral');
+        fileStatusRestoreTimer = null;
+    }, dur);
 }
 
 function showNotification(msg, type = 'info') {
@@ -1628,10 +2068,28 @@ function showConfirmModal(title, msg, onConfirm, confirmText = 'CONFIRM', confir
     elements.modal.actions.style.display = 'flex'; // Make sure actions are visible
     elements.modal.confirmBtn.style.display = 'inline-flex';
     elements.modal.cancelBtn.style.display = 'inline-flex';
-    elements.modal.confirmBtn.textContent = confirmText;
-    elements.modal.cancelBtn.textContent = 'CANCEL';
-    elements.modal.confirmBtn.className = `btn ${confirmClass}`;
-    elements.modal.cancelBtn.className = 'btn';
+
+    const cancelLabel = elements.modal.cancelBtn.querySelector('.modal-action-btn__label');
+    const confirmLabel = elements.modal.confirmBtn.querySelector('.modal-action-btn__label');
+    if (cancelLabel) cancelLabel.textContent = 'CANCEL';
+    else elements.modal.cancelBtn.textContent = 'CANCEL';
+    if (confirmLabel) confirmLabel.textContent = confirmText;
+    else elements.modal.confirmBtn.textContent = confirmText;
+
+    elements.modal.confirmBtn.className = `btn modal-action-btn ${confirmClass}`;
+    elements.modal.cancelBtn.className = 'btn modal-action-btn';
+
+    const confirmIcon = document.getElementById('modal-confirm-icon');
+    if (confirmIcon) {
+        confirmIcon.className = 'fas modal-action-btn__icon';
+        if (confirmClass.includes('danger')) {
+            confirmIcon.classList.add('fa-trash-can');
+        } else if (String(confirmText).toUpperCase() === 'LOAD') {
+            confirmIcon.classList.add('fa-folder-open');
+        } else {
+            confirmIcon.classList.add('fa-check');
+        }
+    }
     elements.modal.confirmBtn.onclick = () => {
         if (onConfirm) onConfirm();
         closeModal();
