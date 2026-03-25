@@ -98,11 +98,23 @@
     }
 
     function utf8ToBase64(str) {
-        return btoa(unescape(encodeURIComponent(str)));
+        const bytes = new TextEncoder().encode(str);
+        let binary = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        return btoa(binary);
     }
 
     function base64ToUtf8(b64) {
-        return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
+        const clean = b64.replace(/\s/g, '');
+        const bin = atob(clean);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) {
+            bytes[i] = bin.charCodeAt(i);
+        }
+        return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
     }
 
     function buildHeaders(token) {
@@ -128,15 +140,23 @@
         return `HTTP ${status}`;
     }
 
-    function normalizeProjectsArray(data) {
-        let raw;
+    function extractProjectsArray(data) {
         if (Array.isArray(data)) {
-            raw = data;
-        } else if (data && Array.isArray(data.projects)) {
-            raw = data.projects;
-        } else {
-            throw new Error('Oczekiwano tablicy projektów lub obiektu { projects: [...] }.');
+            return data;
         }
+        if (data && Array.isArray(data.projects)) {
+            return data.projects;
+        }
+        if (data && Array.isArray(data.savedProjects)) {
+            return data.savedProjects;
+        }
+        throw new Error(
+            'Plik JSON musi być tablicą projektów lub obiektem z polem projects (ew. savedProjects).'
+        );
+    }
+
+    function normalizeProjectsArray(data) {
+        const raw = extractProjectsArray(data);
         return raw.map((p, i) => ({
             id: typeof p.id === 'number' ? p.id : Date.now() + i,
             name: String(p.name || `Project ${i + 1}`).trim() || `Project ${i + 1}`,
@@ -202,10 +222,14 @@
 
     function getConfigForRequest() {
         const c = loadConfig();
-        if (!c.owner || !c.repo || !c.path) {
-            throw new Error('Uzupełnij owner, repo i path (CyberGitHubProjects.setConfig).');
+        const owner = String(c.owner || '').trim();
+        const repo = String(c.repo || '').trim();
+        const path = String(c.path || '').trim() || defaultConfig().path;
+        const branch = String(c.branch || '').trim() || defaultConfig().branch;
+        if (!owner || !repo) {
+            throw new Error('Uzupełnij owner i repo w ustawieniach GitHub (Zapisz konfigurację).');
         }
-        return c;
+        return { ...c, owner, repo, path, branch };
     }
 
     /**
@@ -229,13 +253,66 @@
             throw new Error(parseGithubError(res.status, text));
         }
 
-        const meta = JSON.parse(text);
-        if (!meta.content || meta.type !== 'file') {
-            throw new Error('Odpowiedź GitHub: brak pliku lub nieprawidłowy typ.');
+        let meta;
+        try {
+            meta = JSON.parse(text);
+        } catch (e) {
+            throw new Error('GitHub: nie można sparsować metadanych pliku (oczekiwano JSON).');
         }
 
-        const jsonText = base64ToUtf8(meta.content);
-        const payload = JSON.parse(jsonText);
+        if (meta.type !== 'file') {
+            throw new Error('Odpowiedź GitHub: w ścieżce nie jest zwykły plik (sprawdź path — nie katalog).');
+        }
+
+        let jsonText = '';
+        if (meta.content && typeof meta.content === 'string') {
+            jsonText = base64ToUtf8(meta.content);
+        } else {
+            /**
+             * Duże pliki: GitHub często zwraca tylko download_url (bez content).
+             * NIE wysyłaj Authorization na raw.githubusercontent.com — wymusza preflight OPTIONS,
+             * a ten host nie przechodzi CORS z przeglądarki.
+             * Z tokenem: drugie żądanie na to samo URL Contents API z Accept: raw (api.github.com + CORS).
+             */
+            if (c.token) {
+                const rawRes = await fetch(url, {
+                    headers: {
+                        ...buildHeaders(c.token),
+                        Accept: 'application/vnd.github.raw'
+                    },
+                    cache: 'no-store'
+                });
+                const rawErrText = await rawRes.text();
+                if (!rawRes.ok) {
+                    throw new Error(parseGithubError(rawRes.status, rawErrText));
+                }
+                jsonText = rawErrText;
+            } else if (meta.download_url && typeof meta.download_url === 'string') {
+                const rawRes = await fetch(meta.download_url, { cache: 'no-store' });
+                if (!rawRes.ok) {
+                    throw new Error(
+                        'GitHub: pobranie pliku (raw, publiczne) nie powiodło się: HTTP ' +
+                        rawRes.status +
+                        '. Dla prywatnego repo ustaw token PAT.'
+                    );
+                }
+                jsonText = await rawRes.text();
+            } else {
+                throw new Error(
+                    'Odpowiedź GitHub: brak treści pliku (content) — ustaw token PAT albo zmniejsz plik.'
+                );
+            }
+        }
+
+        let payload;
+        try {
+            payload = JSON.parse(jsonText);
+        } catch (e) {
+            throw new Error(
+                'Zawartość pliku w repozytorium nie jest poprawnym JSON: ' + (e.message || String(e))
+            );
+        }
+
         const projects = normalizeProjectsArray(payload);
         return { payload, sha: meta.sha || null, projects };
     }
@@ -258,16 +335,10 @@
             branch: c.branch || 'main'
         };
 
-        let sha = null;
-        try {
-            const cur = await fetchRemotePayload();
-            sha = cur.sha;
-        } catch (e) {
-            /* jeśli fetch padł z innego powodu niż brak pliku — upload i tak spróbuje */
-        }
-
-        if (sha) {
-            bodyObj.sha = sha;
+        /** Zawsze odczyt aktualnego sha — błędy (401, sieć, zła ścieżka) muszą przerwać zapis zamiast PUT bez sha przy istniejącym pliku. */
+        const cur = await fetchRemotePayload();
+        if (cur.sha) {
+            bodyObj.sha = cur.sha;
         }
 
         const res = await fetch(url, {

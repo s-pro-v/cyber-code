@@ -1838,6 +1838,10 @@ function showSettings() {
                         Synchronizacja archiwum (<code>savedProjects</code>) z plikiem JSON w repozytorium GitHub.
                         Token (PAT) tylko lokalnie. Ikona obok pola tokena pobiera wartość z
                         — pole <code>cyber_data</code>. <strong>XOR + Base64</strong>: hasło powyżej; puste = bez deszyfrowania.
+                        ${typeof location !== 'undefined' && location.protocol === 'file:'
+            ? '<br><br><strong>Uwaga:</strong> otwierasz stronę z dysku (<code>file://</code>). Żądania do API GitHub mogą być blokowane — uruchom aplikację przez lokalny serwer (np. <code>npx serve</code> lub „Live Server”).'
+            : ''
+        }
                     </p>
                     <div class="setting-item setting-github-field">
                         <label class="setting-label" for="gh-owner">
