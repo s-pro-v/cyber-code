@@ -416,14 +416,6 @@ i {
 
 }
 
-.pane-toolbar-separator {
-    width: 66%;
-    height: 100%;
-    background: var(--panel-bg);
-    box-shadow: var(--shadow-drop);
-    border: 1px solid var(--border-color);
-}
-
 /* --- EDITOR & PREVIEW GRID --- */
 .data-grid {
     display: grid;
@@ -462,17 +454,57 @@ i {
 
 }
 
-.pane-label span {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4em;
+/* Lewa część | wypełniacz | toolbar — jeden wzorzec (edytor + preview) */
+.pane-header--with-spacer {
+    justify-content: flex-start;
 }
+
+.pane-header--with-spacer .pane-toolbar {
+    flex-shrink: 0;
+}
+
+.pane-header-spacer {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-self: stretch;
+    min-height: 30px;
+    box-shadow: var(--shadow-drop);
+    border: 1px solid var(--border-color);
+    background: var(--panel-bg);
+    margin: 0 0.2rem;
+}
+
+.pane-label span {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 180px;
+    box-shadow: var(--shadow-drop);
+    border: 1px solid var(--border-color);
+    height: 30px;
+    padding: 0 0.5rem;
+    justify-content: center;
+}
+
+.pane-label span i {
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.6;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+}
+
 
 .pane-header-primary {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
 }
 
@@ -527,6 +559,7 @@ i {
     display: flex;
     align-items: center;
     gap: 2px;
+    font-weight: 600;
 }
 
 .editor-tab {
@@ -614,7 +647,7 @@ i {
 .pane-toolbar {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 2px;
 }
 
 .pane-toolbar .btn-icon {
@@ -622,6 +655,7 @@ i {
     min-width: 30px;
     height: 30px;
     box-sizing: border-box;
+    border: 1px solid var(--border-color);
 }
 
 .editor-container {
@@ -714,6 +748,11 @@ iframe {
 }
 
 /* --- MODAL --- */
+html {
+    /* Zapobiega „skokowi” layoutu, gdy pojawia się pasek przewijania (viewport) */
+    scrollbar-gutter: stable;
+}
+
 #modal-container {
     position: fixed;
     top: 0;
@@ -724,9 +763,15 @@ iframe {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.25s ease;
+    /* Centrowanie bez przesuwania treści przy pojawianiu się scrollbara wewnątrz modala */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
 }
 
 #modal-container.visible {
@@ -744,9 +789,12 @@ iframe {
     display: flex;
     flex-direction: column;
     position: relative;
-    transform: scale(0.95) translateY(20px);
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    margin: auto;
+    flex-shrink: 0;
+    /* Tylko lekki fade — bez scale (scale rozjeżdżał optycznie tekst przy otwarciu) */
     opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
     overflow: hidden;
     box-shadow: var(--shadow-drop);
 }
@@ -774,12 +822,13 @@ iframe {
 }
 
 #modal-container.visible .modal {
-    transform: scale(1) translateY(0);
     opacity: 1;
+    transform: translateY(0);
 }
 
 .modal-header {
     padding: 15px;
+    flex-shrink: 0;
     background-color: var(--bg-primary);
     background-image: var(--bg-mode);
     font-family: "Orbitron";
@@ -792,14 +841,23 @@ iframe {
 }
 
 .modal-body {
-    padding: 20px;
+    padding: 10px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
-    color: var(--text-color);
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    color: var(--text-muted);
     font-size: 0.9rem;
+    box-shadow: var(--shadow-inset);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-bottom: none;
 }
 
 .modal-actions {
     padding: 15px;
+    flex-shrink: 0;
     border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: flex-end;
@@ -809,58 +867,108 @@ iframe {
     background: var(--bg-color);
 }
 
-/* Przyciski stopki modala: ikona + etykieta */
-.modal-actions .modal-action-btn {
+/* Stopka modala + przyciski akcji w treści — ten sam wzorzec (ikona + etykieta) */
+.modal-actions .modal-action-btn,
+#modal-container .modal-body .modal-action-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    min-width: 8.5rem;
-    min-height: 36px;
+    gap: 0.4rem;
+    min-width: 7rem;
+    min-height: 32px;
     height: auto;
-    padding: 0.45rem 1rem;
+    padding: 0.25rem 0.5rem;
     text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    font-family: "Share Tech Mono", var(--font-family);
+    border-left: 3px solid transparent;
+    box-sizing: border-box;
 }
 
-.modal-actions .modal-action-btn__icon {
-    font-size: 0.85rem;
+.modal-actions .modal-action-btn__icon,
+#modal-container .modal-body .modal-action-btn__icon {
+    font-size: 0.68rem;
     line-height: 1;
     opacity: 0.9;
     flex-shrink: 0;
-    width: 1.1em;
+    width: 1em;
     text-align: center;
 }
 
-.modal-actions .modal-action-btn:hover .modal-action-btn__icon {
+.modal-actions .modal-action-btn:hover .modal-action-btn__icon,
+#modal-container .modal-body .modal-action-btn:hover .modal-action-btn__icon {
     opacity: 1;
 }
 
-.modal-actions .modal-action-btn__label {
+.modal-actions .modal-action-btn__label,
+#modal-container .modal-body .modal-action-btn__label {
     line-height: 1.2;
+    font-size: inherit;
 }
 
-.modal-actions .btn-primary .modal-action-btn__icon {
+.modal-actions .btn-primary.modal-action-btn,
+#modal-container .modal-body .btn-primary.modal-action-btn {
+    border-left-color: var(--highlight-color);
+}
+
+.modal-actions .btn-danger.modal-action-btn,
+#modal-container .modal-body .btn-danger.modal-action-btn {
+    border-left-color: var(--danger-color);
+}
+
+.modal-actions .btn-primary .modal-action-btn__icon,
+#modal-container .modal-body .btn-primary .modal-action-btn__icon {
     color: var(--highlight-color);
 }
 
-.modal-actions .btn-danger .modal-action-btn__icon {
+.modal-actions .btn-danger .modal-action-btn__icon,
+#modal-container .modal-body .btn-danger .modal-action-btn__icon {
     color: var(--danger-color);
 }
 
-.modal-actions .modal-action-btn:not(.btn-primary):not(.btn-danger) .modal-action-btn__icon {
+.modal-actions .modal-action-btn:not(.btn-primary):not(.btn-danger) .modal-action-btn__icon,
+#modal-container .modal-body .modal-action-btn:not(.btn-primary):not(.btn-danger) .modal-action-btn__icon {
     color: var(--text-muted);
 }
 
-.modal-actions .modal-action-btn:hover:not(:active) .modal-action-btn__icon {
+.modal-actions .modal-action-btn:hover:not(:active) .modal-action-btn__icon,
+#modal-container .modal-body .modal-action-btn:hover:not(:active) .modal-action-btn__icon {
     color: var(--text-color);
 }
 
-.modal-actions .btn-primary:hover .modal-action-btn__icon {
+.modal-actions .btn-primary:hover .modal-action-btn__icon,
+#modal-container .modal-body .btn-primary:hover .modal-action-btn__icon {
     color: var(--text-color);
 }
 
-.modal-actions .btn-danger:hover .modal-action-btn__icon {
+.modal-actions .btn-danger:hover .modal-action-btn__icon,
+#modal-container .modal-body .btn-danger:hover .modal-action-btn__icon {
     color: var(--text-primary);
+}
+
+/* Rząd przycisków potwierdzających w treści modala */
+.modal-body-actions {
+    margin-top: 18px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Inne .btn w treści (bez modal-action-btn), np. starsze fragmenty */
+#modal-container .modal-body .btn:not(.modal-action-btn) {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    font-family: "Share Tech Mono", var(--font-family);
+    min-height: 30px;
+    padding: 0.35rem 0.75rem;
+}
+
+#modal-container .modal-body .btn:not(.modal-action-btn) i {
+    font-size: 0.68rem;
+    min-width: 1em;
 }
 
 /* --- MODAL INPUTS & GRIDS --- */
@@ -880,6 +988,24 @@ iframe {
 .modal-input:focus, .modal-textarea:focus {
     border-bottom-color: var(--highlight);
     color: var(--text-color);
+}
+
+/* ARCHIVE DATA: ja-select — .ja-select-value (ikona + tekst) + .ja-select-list razem, lista nie obcinana */
+.archive-modal .modal-body {
+    overflow: visible;
+}
+
+.archive-modal .info-card .ja-select-wrap {
+    margin-top: 5px;
+}
+
+.archive-modal .info-card .ja-select-btn {
+    height: 40px;
+    border-left: 3px solid var(--highlight-color);
+}
+
+.archive-modal .info-card .ja-select-list {
+    z-index: 50;
 }
 
 .command-center-grid {
@@ -904,15 +1030,15 @@ iframe {
 }
 
 .project-card-clickable:hover {
-    background: var(--bg-color);
+    background-color: var(--bg-color);
     color: var(--text-color);
     box-shadow: var(--shadow-drop);
 }
 
 .load-archive-modal .modal-body {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 9px;
     align-content: start;
 }
 
@@ -923,17 +1049,184 @@ iframe {
 
 .load-archive-modal .delete-btn-container {
     position: absolute;
-    top: 0;
-    right: 0;
+    top: 6px;
+    right: 6px;
     z-index: 2;
     opacity: 0;
     transition: opacity 0.2s ease;
     line-height: 0;
 }
 
-/* miejsce w nagłówku, żeby tytuł nie nachodził na przycisk w rogu */
-.load-archive-modal .project-card-clickable .card-header {
-    padding-right: 2.5rem;
+/* Karta archiwum: układ — meta u góry (ikona + kategoria/czas), stopka z nazwą i datą */
+.load-archive-modal .archive-card {
+    padding: 0;
+    min-height: 118px;
+    overflow: hidden;
+    justify-content: stretch;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.load-archive-modal .archive-card-top {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-height: 64px;
+    padding: 12px 40px 10px 12px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    background-image: var(--bg-mode);
+}
+
+.load-archive-modal .archive-card-icon {
+    flex-shrink: 0;
+    width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    color: var(--warning-color);
+    font-size: 1.1rem;
+    box-shadow: var(--shadow-inset);
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.load-archive-modal .archive-card-icon i {
+    font-size: 1.5rem;
+}
+
+.load-archive-modal .archive-card-source--github i {
+    color: var(--text-color);
+}
+
+.load-archive-modal .archive-card-source--local i {
+    color: var(--text-muted);
+    opacity: 0.85;
+}
+
+.load-archive-modal .archive-card-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+}
+
+.load-archive-modal .archive-card-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    line-height: 1.2;
+    transition: color 0.2s ease;
+}
+
+.load-archive-modal .archive-card-category-icon {
+    font-size: 0.85rem;
+    opacity: 0.75;
+    flex-shrink: 0;
+}
+
+.load-archive-modal .archive-card-time {
+    font-size: 0.7rem;
+    font-family: var(--font-family);
+    color: var(--text-color);
+    opacity: 0.9;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.load-archive-modal .archive-card-time i {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    transition: color 0.2s ease;
+}
+
+.load-archive-modal .archive-card-bottom {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 0.5rem;
+    min-height: 0;
+    transition: background-color 0.2s ease;
+}
+
+/* Hover całej karty — góra i dół razem (bez „odciętego” paska) */
+.load-archive-modal .archive-card.project-card-clickable:hover {
+    background: var(--bg-color);
+    box-shadow: var(--shadow-drop);
+}
+
+.load-archive-modal .archive-card.project-card-clickable:hover .archive-card-top {
+    background-color: var(--hover-bg);
+    border-bottom-color: var(--highlight-color);
+}
+
+.load-archive-modal .archive-card.project-card-clickable:hover .archive-card-icon {
+    background: var(--hover-bg);
+    color: var(--highlight-color);
+    box-shadow: var(--shadow-inset);
+}
+
+.load-archive-modal .archive-card.project-card-clickable:hover .archive-card-category {
+    color: var(--text-color);
+}
+
+.load-archive-modal .archive-card.project-card-clickable:hover .archive-card-time {
+    color: var(--text-color);
+    opacity: 1;
+}
+
+.load-archive-modal .archive-card.project-card-clickable:hover .archive-card-time i {
+    color: var(--highlight-color);
+}
+
+.load-archive-modal .archive-card.project-card-clickable:hover .archive-card-date {
+    color: var(--highlight-color);
+}
+
+.load-archive-modal .archive-card-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-family: var(--font-family);
+    color: var(--text-color);
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.load-archive-modal .archive-card .archive-card-name {
+    transition: color 0.2s ease;
+}
+
+.load-archive-modal .archive-card.project-card-clickable:hover .archive-card-name,
+.load-archive-modal .archive-card.project-card-clickable:active .archive-card-name {
+    color: var(--highlight-color);
+}
+
+.load-archive-modal .archive-card-date {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: right;
+    transition: color 0.2s ease;
 }
 
 .card-header {
@@ -944,6 +1237,8 @@ iframe {
     margin-bottom: 8px;
     text-transform: uppercase;
 }
+
+
 
 .card-status {
     color: var(--highlight);
@@ -956,9 +1251,13 @@ iframe {
     gap: 10px;
 }
 
+.card-body i {
+    color: var(--warning-color);
+}
+
 .card-icon {
     font-size: 1.5rem;
-    color: var(--text-muted);
+    color: var(--warning-color);
     width: 40px;
     text-align: center;
 }
@@ -1239,8 +1538,68 @@ iframe {
     letter-spacing: 0.5px;
 }
 
+.snippets-group-label {
+    font-family: "Share Tech Mono", var(--font-family);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--highlight-color);
+    padding: 0.55rem 0.45rem 0.3rem;
+    margin: 0.15rem 0 0;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(90deg, var(--highlight-bg) 0%, transparent 100%);
+}
+
+.snippets-group-label:first-of-type {
+    margin-top: 0;
+    padding-top: 0.35rem;
+}
+
+.snippets-group-label--zestawy {
+    color: var(--highlight);
+    border-bottom-color: var(--highlight-color);
+}
+
+.snippets-group-label--sub {
+    padding-left: 0.85rem;
+    font-size: 0.55rem;
+    opacity: 0.92;
+    margin-top: 0.35rem;
+    background: linear-gradient(90deg, rgba(255, 115, 0, 0.08) 0%, transparent 100%);
+}
+
+.snippets-sidebar .snippet-item--set {
+    border-left: 3px solid var(--highlight-color);
+    margin-bottom: 2px;
+}
+
+.snippets-sidebar .snippet-item--set:hover {
+    border-left-color: var(--highlight);
+    box-shadow: inset 4px 0 0 rgba(255, 115, 0, 0.15);
+}
+
+.snippets-sidebar .snippet-item--set .snippet-name i {
+    color: var(--highlight-color);
+}
+
+.snippets-sidebar .snippet-code--set-meta {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.snippets-sidebar .snippet-set-tabs {
+    font-family: "Share Tech Mono", var(--font-family);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 0 12px 10px 12px;
+    margin-top: -4px;
+    opacity: 0.95;
+}
+
 .snippets-sidebar .snippets-list {
-    padding: 0;
+    padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -1467,6 +1826,239 @@ iframe {
     background-color: var(--highlight-color);
 }
 
+/* --- GitHub sync (zakładka w ustawieniach) --- */
+.settings-github-panel .settings-github-intro {
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+    margin: 0 0 0.75rem;
+    padding: 0 0.15rem;
+}
+
+.settings-github-panel .settings-github-intro code {
+    font-size: 0.68rem;
+    color: var(--highlight-color);
+}
+
+.settings-github-panel .settings-github-intro a {
+    color: var(--highlight-color);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.settings-github-panel .settings-github-intro a:hover {
+    color: var(--text-color);
+}
+
+.setting-item.setting-github-field {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+}
+
+.setting-item.setting-github-field .setting-label {
+    margin-bottom: 0;
+}
+
+.settings-github-input {
+    width: 100%;
+    box-sizing: border-box;
+    height: 34px;
+    padding: 0 0.5rem;
+    font-family: var(--font-family);
+    font-size: 0.72rem;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-inset);
+    outline: none;
+}
+
+.settings-github-input:focus {
+    border-bottom-color: var(--highlight-color);
+    color: var(--text-color);
+}
+
+.settings-github-token-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.45rem;
+}
+
+.settings-github-token-row .settings-github-input {
+    flex: 1 1 140px;
+    min-width: 0;
+}
+
+.settings-github-fetch-key {
+    flex: 0 0 auto;
+    padding: 0 !important;
+    min-width: 34px;
+    width: 34px;
+    min-height: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-github-fetch-key i {
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.settings-github-keypick {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.4rem;
+}
+
+.settings-github-keypick-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.settings-github-auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+}
+
+.settings-github-cyber-data-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.settings-github-cyber-data-tag {
+    font-family: var(--font-family);
+    font-size: 0.72rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--success-color);
+    box-shadow: var(--shadow-inset);
+}
+
+.settings-github-cyber-data-ok {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--highlight-color);
+    letter-spacing: 0.04em;
+}
+
+.settings-github-cyber-data-ok.is-visible {
+    color: var(--text-color);
+}
+
+.settings-github-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 0.75rem;
+    padding: 4px;
+    border-top: 1px solid var(--border-color);
+    align-items: stretch;
+    justify-items: stretch;
+    box-shadow: var(--shadow-inset);
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.settings-github-actions .settings-github-action-btn {
+    font-family: "Share Tech Mono", var(--font-family);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    line-height: 1.3;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    height: 100%;
+    padding: 0;
+    gap: 0;
+    margin: 0;
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow: hidden;
+    text-align: left;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color);
+}
+
+.settings-github-actions .settings-github-action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2.75rem;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    align-self: stretch;
+    box-sizing: border-box;
+}
+
+.settings-github-actions .btn-primary.settings-github-action-btn .settings-github-action-icon {
+    background: var(--highlight-bg);
+    color: var(--highlight-color);
+}
+
+.settings-github-actions .btn-danger.settings-github-action-btn .settings-github-action-icon {
+    background: rgba(220, 53, 69, 0.18);
+    color: var(--danger-color);
+}
+
+.settings-github-actions .settings-github-action-btn:not(.btn-primary):not(.btn-danger) .settings-github-action-icon i,
+.settings-github-actions .btn-primary.settings-github-action-btn .settings-github-action-icon i,
+.settings-github-actions .btn-danger.settings-github-action-btn .settings-github-action-icon i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 0 0.5rem;
+    margin: 0 0.5rem;
+    font-size: 1rem;
+}
+
+.settings-github-actions .settings-github-action-btn:not(.btn-primary):not(.btn-danger) .settings-github-action-icon {
+    color: var(--text-muted);
+}
+
+.settings-github-actions .settings-github-action-label {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0.45rem 0.6rem;
+    min-width: 0;
+    box-sizing: border-box;
+    font-size: 0.8rem;
+}
+
+.settings-github-actions .settings-github-action-icon i {
+    font-size: 0.78rem;
+    line-height: 1;
+    display: block;
+}
+
+.settings-github-status {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin: 0.65rem 0 0;
+    min-height: 1.2em;
+}
+
 .setting-item.setting-range {
     display: flex;
     flex-direction: column;
@@ -1649,18 +2241,8 @@ iframe {
     border-left-color: var(--highlight-color);
 }
 
-/* Po initJaSelect: prawdziwy select tylko pod change / a11y — pełny ja-select z JS */
-.settings-sidebar .ja-select-wrap {
-    width: 100%;
-    position: relative;
-    z-index: 1;
-}
-
-.settings-sidebar .ja-select-wrap.ja-select-open {
-    z-index: 20;
-}
-
-.settings-sidebar .ja-select-wrap>select.ja-select-native.setting-select-input {
+/* Po initJaSelect: prawdziwy select tylko pod a11y — ukryty wszędzie (sidebar, modal archiwum itd.) */
+.ja-select-wrap>select.ja-select-native.setting-select-input {
     position: absolute !important;
     width: 1px !important;
     height: 1px !important;
@@ -1678,6 +2260,16 @@ iframe {
     appearance: none !important;
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
+}
+
+.settings-sidebar .ja-select-wrap {
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+.settings-sidebar .ja-select-wrap.ja-select-open {
+    z-index: 20;
 }
 
 /* --- SETTINGS SIDEBAR --- */
@@ -1970,6 +2562,27 @@ iframe {
     background: var(--hover-bg);
 }
 
+.ja-select-btn .ja-select-value {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    text-align: left;
+}
+
+.ja-select-btn .ja-select-value>i {
+    font-size: 0.9rem;
+    opacity: 0.88;
+    flex-shrink: 0;
+    color: var(--highlight-color);
+}
+
+.ja-select-btn .ja-select-value .ja-select-value-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .ja-select-btn .ja-select-arrow {
     font-size: 0.7rem;
     transition: transform var(--transition-speed);
@@ -2000,7 +2613,6 @@ iframe {
     display: none;
     box-shadow: var(--shadow-drop);
     border-radius: 0;
-    max-height: 200px;
     overflow-y: auto;
 }
 
@@ -2059,6 +2671,23 @@ iframe {
     opacity: 1;
 }
 
+.ja-select-item .ja-select-prefix.ja-select-prefix--icon {
+    opacity: 0.75;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.1em;
+}
+
+.ja-select-item .ja-select-prefix.ja-select-prefix--icon i {
+    font-size: 0.82rem;
+}
+
+.ja-select-item:hover .ja-select-prefix.ja-select-prefix--icon,
+.ja-select-item.ja-selected .ja-select-prefix.ja-select-prefix--icon {
+    opacity: 1;
+}
+
 /* Scrollbar dla listy (Webkit) */
 .ja-select-list::-webkit-scrollbar {
     width: 6px;
@@ -2084,8 +2713,6 @@ iframe {
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--overlay-backdrop);
-    backdrop-filter: blur(2px);
     z-index: 999;
     opacity: 0;
     pointer-events: none;

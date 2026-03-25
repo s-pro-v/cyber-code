@@ -172,7 +172,7 @@
 
                 <!-- Left Pane: Editor -->
                 <div class="data-pane" id="editor-pane">
-                    <div class="pane-header">
+                    <div class="pane-header pane-header--with-spacer">
                         <div class="pane-header-primary">
                             <div class="tab-group">
                                 <div class="editor-tab active" data-tab="html"><i class="fab fa-html5"></i> HTML</div>
@@ -227,7 +227,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="pane-toolbar-separator"></div>
+                        <div class="pane-header-spacer" aria-hidden="true"></div>
                         <div class="pane-toolbar">
                             <button id="snippet-btn" class="btn btn-icon" title="Insert Snippet"><i
                                     class="fas fa-puzzle-piece"></i></button>
@@ -249,10 +249,11 @@
 
                 <!-- Right Pane: Preview -->
                 <div class="data-pane" id="preview-pane">
-                    <div class="pane-header">
+                    <div class="pane-header pane-header--with-spacer">
                         <div class="pane-label">
                             <span><i class="fas fa-eye"></i> LIVE PREVIEW</span>
                         </div>
+                        <div class="pane-header-spacer" aria-hidden="true"></div>
                         <div class="pane-toolbar">
                             <button id="run-btn" class="btn btn-primary btn-icon" title="Run Code (Enter)"><i
                                     class="fas fa-play"></i></button>
@@ -285,6 +286,10 @@
 
     <!-- Motywy Monaco (terminal-dark / terminal-light) — repozytorium css-up -->
     <script src="https://cdn.jsdelivr.net/gh/s-pro-v/css-up@main/style-monaco.js" crossorigin="anonymous"></script>
+    <!-- GitHub sync (savedProjects JSON w repo) — API: window.CyberGitHubProjects -->
+    <script src="github-projects.js"></script>
+    <!-- Snippets (codeSnippets + panel) — registerCyberSnippetContext z index.js -->
+    <script src="snippets.js"></script>
     <!-- Application Logic -->
     <script src="index.js"></script>
 </body>

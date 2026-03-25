@@ -1,63 +1,3 @@
-// --- Code Snippets Mock Data (Prevent errors) ---
-window.codeSnippets = {
-    html: [
-        { name: "Boilerplate", code: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Document</title>\n</head>\n<body>\n  \n</body>\n</html>" },
-        { name: "Button", code: "<button class=\"btn\">Click Me</button>" },
-        { name: "Input Group", code: "<div class=\"input-group\">\n  <label>Label</label>\n  <input type=\"text\">\n</div>" },
-        { name: "Card", code: "<div class=\"card\">\n  <h3>Card Title</h3>\n  <p>Card content goes here.</p>\n</div>" },
-        { name: "Form", code: "<form>\n  <input type=\"text\" placeholder=\"Name\">\n  <input type=\"email\" placeholder=\"Email\">\n  <button type=\"submit\">Submit</button>\n</form>" },
-        { name: "Navigation", code: "<nav>\n  <ul>\n    <li><a href=\"#\">Home</a></li>\n    <li><a href=\"#\">About</a></li>\n    <li><a href=\"#\">Contact</a></li>\n  </ul>\n</nav>" },
-        { name: "Modal", code: "<div class=\"modal\">\n  <div class=\"modal-content\">\n    <span class=\"close\">&times;</span>\n    <p>Modal content</p>\n  </div>\n</div>" },
-        { name: "Table", code: "<table>\n  <thead>\n    <tr>\n      <th>Header 1</th>\n      <th>Header 2</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>Data 1</td>\n      <td>Data 2</td>\n    </tr>\n  </tbody>\n</table>" },
-        { name: "Image", code: "<img src=\"image.jpg\" alt=\"Description\">" },
-        { name: "Link", code: "<a href=\"#\" target=\"_blank\">Link Text</a>" },
-        { name: "List", code: "<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n  <li>Item 3</li>\n</ul>" },
-        { name: "Container", code: "<div class=\"container\">\n  <div class=\"row\">\n    <div class=\"col\">Content</div>\n  </div>\n</div>" }
-    ],
-    css: [
-        { name: "Flex Center", code: "display: flex;\njustify-content: center;\nalign-items: center;" },
-        { name: "Grid Layout", code: "display: grid;\ngrid-template-columns: repeat(3, 1fr);\ngap: 1rem;" },
-        { name: "Reset", code: "* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}" },
-        { name: "Button Style", code: "button {\n  padding: 10px 20px;\n  background: #007bff;\n  color: white;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n}" },
-        { name: "Card Style", code: ".card {\n  background: white;\n  border-radius: 8px;\n  box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n  padding: 20px;\n}" },
-        { name: "Hover Effect", code: ".element:hover {\n  transform: scale(1.05);\n  transition: transform 0.3s;\n}" },
-        { name: "Gradient Background", code: "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" },
-        { name: "Centered Absolute", code: "position: absolute;\ntop: 50%;\nleft: 50%;\ntransform: translate(-50%, -50%);" },
-        { name: "Full Width Height", code: "width: 100%;\nheight: 100vh;" },
-        { name: "Text Shadow", code: "text-shadow: 2px 2px 4px rgba(0,0,0,0.3);" },
-        { name: "Box Shadow", code: "box-shadow: 0 4px 6px rgba(0,0,0,0.1);" },
-        { name: "Animation", code: "@keyframes fadeIn {\n  from { opacity: 0; }\n  to { opacity: 1; }\n}\n.element {\n  animation: fadeIn 0.5s;\n}" },
-        { name: "Media Query", code: "@media (max-width: 768px) {\n  .element {\n    font-size: 14px;\n  }\n}" },
-        { name: "Transform", code: "transform: rotate(45deg) scale(1.2);" },
-        { name: "Transition", code: "transition: all 0.3s ease;" }
-    ],
-    js: [
-        { name: "Console Log", code: "console.log('Debug:', variable);" },
-        { name: "Query Selector", code: "const el = document.querySelector('.class');" },
-        { name: "Event Listener", code: "document.addEventListener('click', (e) => {\n  // code\n});" },
-        { name: "Arrow Function", code: "const func = (param) => {\n  return param * 2;\n};" },
-        { name: "Fetch API", code: "fetch('https://api.example.com/data')\n  .then(response => response.json())\n  .then(data => console.log(data));" },
-        { name: "Async/Await", code: "async function getData() {\n  const response = await fetch('url');\n  const data = await response.json();\n  return data;\n}" },
-        { name: "Array Map", code: "const doubled = array.map(item => item * 2);" },
-        { name: "Array Filter", code: "const filtered = array.filter(item => item > 10);" },
-        { name: "Array Reduce", code: "const sum = array.reduce((acc, item) => acc + item, 0);" },
-        { name: "LocalStorage Set", code: "localStorage.setItem('key', 'value');" },
-        { name: "LocalStorage Get", code: "const value = localStorage.getItem('key');" },
-        { name: "SetTimeout", code: "setTimeout(() => {\n  console.log('Delayed execution');\n}, 1000);" },
-        { name: "SetInterval", code: "setInterval(() => {\n  console.log('Repeating');\n}, 1000);" },
-        { name: "Class Definition", code: "class MyClass {\n  constructor(name) {\n    this.name = name;\n  }\n  method() {\n    return this.name;\n  }\n}" },
-        { name: "Promise", code: "const promise = new Promise((resolve, reject) => {\n  if (success) resolve('Success');\n  else reject('Error');\n});" },
-        { name: "Try Catch", code: "try {\n  // risky code\n} catch (error) {\n  console.error(error);\n}" },
-        { name: "Template Literal", code: "const message = `Hello, ${name}!`;" },
-        { name: "Destructuring", code: "const { name, age } = person;" },
-        { name: "Spread Operator", code: "const newArray = [...oldArray, newItem];" },
-        { name: "Toggle Class", code: "element.classList.toggle('active');" }
-    ]
-};
-
-// --- PASTE USER JS HERE ---
-// I will include the user provided JS logic below to ensure functionality
-
 // --- DOM Elements ---
 const elements = {
     previewIframe: document.getElementById('preview-iframe'),
@@ -155,7 +95,13 @@ const defaultContent = {
     html: `<!-- Cyber Structure -->
 <div class="container">
     <div class="card">
-        <h1>SYSTEM READY</h1>
+        <div class="cyber-logo" aria-label="Cyber Code">
+            <span class="cyber-logo__glyph" aria-hidden="true">&gt;_</span>
+            <div class="cyber-logo__wordmark">
+                <span class="cyber-logo__cyber">CYBER</span><span class="cyber-logo__code">CODE</span>
+            </div>
+        </div>
+        <h1 class="status-head">SYSTEM READY</h1>
         <p>Interface loaded successfully.</p>
         <div class="status-line">
             <span class="dot"></span> ONLINE
@@ -164,7 +110,7 @@ const defaultContent = {
     </div>
 </div>`,
     css: `/* Cyber Styles */
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&display=swap');
 
 body {
     background: #050505;
@@ -210,10 +156,49 @@ body {
     border-right: 2px solid #ff7300;
 }
 
-h1 {
+.cyber-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.cyber-logo__glyph {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.75rem;
+    color: #ff7300;
+    line-height: 1;
+    text-shadow: 0 0 12px rgba(255, 115, 0, 0.45);
+    letter-spacing: 0.05em;
+}
+
+.cyber-logo__wordmark {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    letter-spacing: 0.2em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.cyber-logo__cyber {
+    color: #ff7300;
+    text-shadow: 0 0 10px rgba(255, 115, 0, 0.5);
+}
+
+.cyber-logo__code {
+    color: #e9ecef;
+}
+
+h1.status-head {
     color: #ff7300;
     letter-spacing: 2px;
-    margin-bottom: 10px;
+    margin: 0 0 10px;
+    font-size: 1.15rem;
+    font-family: 'Share Tech Mono', monospace;
     text-shadow: 0 0 10px rgba(255, 115, 0, 0.5);
 }
 
@@ -259,36 +244,55 @@ button:hover {
     50% { opacity: 1; }
     100% { opacity: 0.5; }
 }`,
-    js: `// Cyber Logic
+    js: `// Cyber Logic — modal zatwierdzenia = showCyberConfirm() ze strony głównej (ten sam UI)
 function initSequence() {
-    const btn = document.querySelector('button');
-    const h1 = document.querySelector('h1');
-    
-    btn.innerText = "PROCESSING...";
+    var p = window.parent;
+    if (p && typeof p.showCyberConfirm === 'function') {
+        p.showCyberConfirm(
+            'PROTOCOL INIT',
+            'Potwierdź uruchomienie sekwencji inicjalizacji.<br><br><span style="color:var(--text-muted); font-size:0.85rem;">Spowoduje to zmianę statusu interfejsu i zapis w logu systemowym.</span>',
+            function () { runInitSequence(); },
+            'URUCHOM',
+            'btn-primary'
+        );
+    } else {
+        runInitSequence();
+    }
+}
+
+function runInitSequence() {
+    var btn = document.querySelector('button');
+    var h1 = document.querySelector('h1.status-head');
+    if (!btn || !h1) return;
+
+    btn.innerText = 'PROCESSING...';
     btn.style.opacity = 0.7;
-    
-    // Simulate async operation
-    setTimeout(() => {
-        h1.innerText = "ACCESS GRANTED";
-        h1.style.color = "#28a745";
-        h1.style.textShadow = "0 0 15px rgba(40, 167, 69, 0.8)";
-        
-        btn.innerText = "SYSTEM ACTIVE";
-        btn.style.borderColor = "#28a745";
-        btn.style.color = "#28a745";
-        btn.style.pointerEvents = "none";
-        
-        // Parent context notification (if in editor)
-        console.log("System initialized successfully");
+
+    setTimeout(function () {
+        h1.innerText = 'ACCESS GRANTED';
+        h1.style.color = '#28a745';
+        h1.style.textShadow = '0 0 15px rgba(40, 167, 69, 0.8)';
+
+        btn.innerText = 'SYSTEM ACTIVE';
+        btn.style.borderColor = '#28a745';
+        btn.style.color = '#28a745';
+        btn.style.pointerEvents = 'none';
+
+        console.log('System initialized successfully');
         try {
-            if(window.parent.showAlertModal) {
-               window.parent.showAlertModal("SUCCESS", "Protocol 7 initialized.");
+            var par = window.parent;
+            if (par && typeof par.showCyberAlert === 'function') {
+                par.showCyberAlert('SUKCES', 'Sekwencja inicjalizacji zakończona. System aktywny.', 'OK');
+            } else if (par && typeof par.showNotification === 'function') {
+                par.showNotification('Protokół 7 zakończony.', 'success');
+            } else if (par && par.showAlertModal) {
+                par.showAlertModal('SUCCESS', 'Protocol 7 initialized.');
             }
-        } catch(e) {}
+        } catch (e) {}
     }, 1500);
 }
 
-console.log("System Idle. Waiting for input.");`
+console.log('System Idle. Waiting for input.');`
 };
 
 // --- Initialization ---
@@ -352,11 +356,21 @@ function createEditors() {
             const autoSaved = localStorage.getItem('autoSavedProject');
             if (autoSaved) {
                 const project = JSON.parse(autoSaved);
-                if (project && (project.html || project.css || project.js)) {
-                    initialHtml = project.html || defaultContent.html;
-                    initialCss = project.css || defaultContent.css;
-                    initialJs = project.js || defaultContent.js;
-                    console.log('Loading saved content from autosave');
+                if (project && typeof project === 'object') {
+                    const h = project.html;
+                    const c = project.css;
+                    const j = project.js;
+                    if (
+                        typeof h === 'string' ||
+                        typeof c === 'string' ||
+                        typeof j === 'string' ||
+                        project.timestamp
+                    ) {
+                        initialHtml = typeof h === 'string' ? h : defaultContent.html;
+                        initialCss = typeof c === 'string' ? c : defaultContent.css;
+                        initialJs = typeof j === 'string' ? j : defaultContent.js;
+                        console.log('Loading saved content from autosave');
+                    }
                 }
             }
         } catch (e) {
@@ -409,6 +423,19 @@ function createEditors() {
         }
 
         console.log('Editors created successfully');
+
+        if (typeof registerCyberSnippetContext === 'function') {
+            registerCyberSnippetContext({
+                get currentTab() {
+                    return currentTab;
+                },
+                get editors() {
+                    return editors;
+                },
+                elements,
+                showNotification
+            });
+        }
 
         initSyntaxSelect();
 
@@ -494,9 +521,9 @@ function setupEventListeners() {
         if (e.key === 'F1') { e.preventDefault(); showShortcuts(); }
         if (e.key === 'F5') { e.preventDefault(); refreshPreview(); }
 
-        if (e.key === 'Escape' && document.querySelector('.settings-sidebar .ja-select-list.ja-visible')) {
+        if (e.key === 'Escape' && document.querySelector('.ja-select-list.ja-visible')) {
             e.preventDefault();
-            closeAllSettingsJaSelects();
+            closeAllJaSelectLists();
             return;
         }
 
@@ -638,8 +665,11 @@ function updatePreview() {
                     ${editors.html.getValue()}
                     <script>
                         try {
-                            // Provide access to parent's modal functions
-                            window.parent.showAlertModal = window.parent.showAlertModal || alert;
+                            // API modali strony głównej (ten sam styl co edytor)
+                            var _p = window.parent;
+                            if (_p && _p !== window) {
+                                _p.showAlertModal = _p.showAlertModal || alert;
+                            }
                             ${editors.js.getValue()}
                         } catch(e) {
                             console.error("JavaScript Error:", e);
@@ -669,12 +699,30 @@ function newProject() {
         editors.css.setValue(defaultContent.css);
         editors.js.setValue(defaultContent.js);
         updatePreview();
+        flushAutoSaveNow();
         showNotification('New project initialized.', 'success');
     });
 }
 
 function saveProject() {
     showSaveProjectModal();
+}
+
+/** Ikona kategorii archiwum (Website / Component / Experiment). */
+function getProjectCategoryIconClass(category) {
+    const c = String(category || 'Website').trim().toLowerCase();
+    if (c === 'component') return 'fas fa-cube';
+    if (c === 'experiment') return 'fas fa-flask';
+    return 'fas fa-globe';
+}
+
+/** Ikona źródła: GitHub (sync / import z repo) vs lokalny dysk. */
+function getArchiveSourceIconClass(p) {
+    return p.fromGithub === true ? 'fab fa-github' : 'fas fa-hdd';
+}
+
+function getArchiveSourceLabel(p) {
+    return p.fromGithub === true ? 'Import / sync: GitHub' : 'Tylko lokalnie (dysk)';
 }
 
 function showSaveProjectModal() {
@@ -686,16 +734,25 @@ function showSaveProjectModal() {
                     </div>
                      <div class="info-card">
                         <div class="card-header"><span>CATEGORY</span></div>
-                         <select id="project-category" class="modal-input">
-                            <option>Website</option><option>Component</option><option>Experiment</option>
+                         <select id="project-category" class="setting-select-input archive-category-select" aria-label="Project category">
+                            <option value="Website" data-ja-icon="fas fa-globe" selected>Website</option>
+                            <option value="Component" data-ja-icon="fas fa-cube">Component</option>
+                            <option value="Experiment" data-ja-icon="fas fa-flask">Experiment</option>
                         </select>
                     </div>
                 </div>
-                <div style="margin-top:15px; text-align:right;">
-                    <button class="btn btn-primary" onclick="confirmSaveProject()">EXECUTE SAVE</button>
+                <div class="modal-body-actions">
+                    <button type="button" class="btn btn-primary modal-action-btn" onclick="confirmSaveProject()">
+                        <i class="fas fa-floppy-disk modal-action-btn__icon" aria-hidden="true"></i>
+                        <span class="modal-action-btn__label">EXECUTE SAVE</span>
+                    </button>
                 </div>
             `;
-    showCustomModal('ARCHIVE DATA', modalHTML, () => document.getElementById('project-name').focus(), 'archive-modal');
+    showCustomModal('ARCHIVE DATA', modalHTML, () => {
+        initSettingJaSelects(elements.modal.body);
+        const nameEl = document.getElementById('project-name');
+        if (nameEl) nameEl.focus();
+    }, 'archive-modal');
 }
 
 function confirmSaveProject() {
@@ -716,7 +773,8 @@ function confirmSaveProject() {
             css: editors.css.getValue(),
             js: editors.js.getValue(),
             created: new Date().toISOString(),
-            modified: new Date().toISOString()
+            modified: new Date().toISOString(),
+            fromGithub: false
         };
 
         const projects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
@@ -727,6 +785,7 @@ function confirmSaveProject() {
             if (confirm(`Project "${name}" already exists. Overwrite?`)) {
                 project.id = projects[existingIndex].id;
                 project.created = projects[existingIndex].created;
+                project.fromGithub = false;
                 projects[existingIndex] = project;
             } else {
                 return;
@@ -772,17 +831,25 @@ function loadProject() {
             const originalIndex = projects.findIndex(proj => proj.id === p.id);
             const modified = p.modified || p.created;
             const category = p.category || 'Website';
+            const sourceIcon = getArchiveSourceIconClass(p);
+            const sourceMod = p.fromGithub === true ? 'github' : 'local';
+            const sourceTitle = getArchiveSourceLabel(p);
+            const categoryIcon = getProjectCategoryIconClass(category);
+            const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const nameSafe = esc(p.name);
+            const categorySafe = esc(category);
             return `
-                <div class="info-card project-card-clickable" onclick="loadProjectByIndex(${originalIndex})" onmouseenter="this.querySelector('.delete-btn-container').style.opacity='1'" onmouseleave="this.querySelector('.delete-btn-container').style.opacity='0'">
-                    <div class="card-header">
-                        <span>${p.name}</span>
-                        <span class="card-status">${new Date(modified).toLocaleDateString()}</span>
+                <div class="info-card project-card-clickable archive-card" onclick="loadProjectByIndex(${originalIndex})" onmouseenter="this.querySelector('.delete-btn-container').style.opacity='1'" onmouseleave="this.querySelector('.delete-btn-container').style.opacity='0'">
+                    <div class="archive-card-top">
+                        <div class="archive-card-icon archive-card-source--${sourceMod}" title="${esc(sourceTitle)}"><i class="${sourceIcon}" aria-hidden="true"></i></div>
+                        <div class="archive-card-meta">
+                            <span class="archive-card-category"><i class="${categoryIcon} archive-card-category-icon" aria-hidden="true"></i> ${categorySafe}</span>
+                            <span class="archive-card-time"><i class="fas fa-clock"></i> ${new Date(modified).toLocaleTimeString()}</span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <i class="fas fa-folder"></i> ${category}
-                        <span style="margin-left: auto; font-size: 0.7rem; color: var(--text-muted);">
-                            <i class="fas fa-clock"></i> ${new Date(modified).toLocaleTimeString()}
-                        </span>
+                    <div class="archive-card-bottom">
+                        <div class="archive-card-name" title=${JSON.stringify(p.name)}>${nameSafe}</div>
+                        <div class="archive-card-date">${new Date(modified).toLocaleDateString()}</div>
                     </div>
                     <div class="delete-btn-container">
                         <button class="btn btn-icon btn-danger" onclick="event.stopPropagation(); deleteProject(${originalIndex});" title="Delete">
@@ -827,6 +894,7 @@ function loadProjectByIndex(index) {
                         editors.css.setValue(projectToLoad.css || '');
                         editors.js.setValue(projectToLoad.js || '');
                         updatePreview();
+                        flushAutoSaveNow();
                         showNotification(`Archive "${projectToLoad.name}" loaded.`, 'success');
                     } catch (e) {
                         showNotification('Error loading project: ' + e.message, 'error');
@@ -895,7 +963,8 @@ function normalizeImportedProjects(data) {
         css: String(p.css ?? ''),
         js: String(p.js ?? ''),
         created: p.created || new Date().toISOString(),
-        modified: p.modified || new Date().toISOString()
+        modified: p.modified || new Date().toISOString(),
+        fromGithub: false
     }));
 }
 
@@ -912,6 +981,7 @@ function mergeProjectLists(existing, incoming) {
         names.add(name.toLowerCase());
         out.push({
             ...p,
+            fromGithub: false,
             id: Date.now() + Math.floor(Math.random() * 1e9),
             name,
             modified: new Date().toISOString()
@@ -965,7 +1035,8 @@ function applyProjectsImport(mode) {
             const base = Date.now();
             const replaced = incoming.map((p, i) => ({
                 ...p,
-                id: base + i
+                id: base + i,
+                fromGithub: false
             }));
             localStorage.setItem('savedProjects', JSON.stringify(replaced));
             showNotification(`Zastąpiono bibliotekę: ${replaced.length} projekt(ów).`, 'success');
@@ -1009,9 +1080,15 @@ function onImportProjectsFileSelected(ev) {
                     <strong>Scal</strong> — dopisz do istniejącej listy (powtarzające się nazwy dostaną sufiks <code>(import N)</code>).<br>
                     <strong>Zastąp wszystko</strong> — usuń obecną bibliotekę i wstaw tylko import (nieodwracalne).
                 </p>
-                <div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
-                    <button type="button" class="btn" onclick="closeModal(); applyProjectsImport('merge');">SCAL</button>
-                    <button type="button" class="btn btn-danger" onclick="closeModal(); applyProjectsImport('replace');">ZASTĄP WSZYSTKO</button>
+                <div class="modal-body-actions">
+                    <button type="button" class="btn modal-action-btn" onclick="closeModal(); applyProjectsImport('merge');">
+                        <i class="fas fa-layer-group modal-action-btn__icon" aria-hidden="true"></i>
+                        <span class="modal-action-btn__label">SCAL</span>
+                    </button>
+                    <button type="button" class="btn btn-danger modal-action-btn" onclick="closeModal(); applyProjectsImport('replace');">
+                        <i class="fas fa-triangle-exclamation modal-action-btn__icon" aria-hidden="true"></i>
+                        <span class="modal-action-btn__label">ZASTĄP WSZYSTKO</span>
+                    </button>
                 </div>
             `;
             showCustomModal('IMPORT PROJEKTÓW', html, null, 'archive-modal');
@@ -1048,58 +1125,6 @@ function cleanAll() {
         updatePreview();
         showNotification('All editors cleared.', 'success');
     }, 'PURGE ALL', 'btn-danger');
-}
-
-function insertSnippet() {
-    const items = window.codeSnippets[currentTab] || [];
-    if (items.length === 0) {
-        showNotification('No snippets available for this tab.', 'info');
-        return;
-    }
-
-    const tabIcon = currentTab === 'html' ? 'fab fa-html5' : (currentTab === 'css' ? 'fab fa-css3-alt' : 'fab fa-js');
-    const tabName = currentTab.toUpperCase();
-
-    const listHTML = `
-        <div class="snippets-header-info">
-            <div class="snippets-tab-badge">
-                <i class="${tabIcon}"></i>
-                <span>${tabName} SNIPPETS</span>
-            </div>
-            <div class="snippets-count">${items.length} available</div>
-        </div>
-        <div class="snippets-list">
-            ${items.map((s, idx) => `
-                <div class="snippet-item" onclick="insertSnippetCode(${idx})">
-                    <div class="snippet-name">
-                        <i class="fas fa-code setting-icon"></i>
-                        <span>${s.name}</span>
-                    </div>
-                    <div class="snippet-code">${s.code.length > 150 ? s.code.substring(0, 150) + '...' : s.code}</div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-
-    elements.snippetsSidebar.body.innerHTML = listHTML;
-    elements.snippetsSidebar.sidebar.classList.add('active');
-    elements.snippetsSidebar.overlay.classList.add('active');
-}
-
-function closeSnippetsSidebar() {
-    elements.snippetsSidebar.sidebar.classList.remove('active');
-    elements.snippetsSidebar.overlay.classList.remove('active');
-}
-window.closeSnippetsSidebar = closeSnippetsSidebar;
-
-function insertSnippetCode(index) {
-    const s = window.codeSnippets[currentTab][index];
-    const editor = editors[currentTab];
-    const selection = editor.getSelection();
-    const op = { range: selection, text: s.code, forceMoveMarkers: true };
-    editor.executeEdits("snippet-insert", [op]);
-    editor.focus();
-    closeSnippetsSidebar();
 }
 
 // --- Settings & Utils ---
@@ -1227,9 +1252,9 @@ function loadSettings() {
     if (saved) editorSettings = { ...editorSettings, ...JSON.parse(saved) };
 }
 
-/** Zamyka wszystkie listy ja-select w sidebarze ustawień */
-function closeAllSettingsJaSelects() {
-    document.querySelectorAll('.settings-sidebar .ja-select-list.ja-visible').forEach((list) => {
+/** Zamyka wszystkie otwarte listy ja-select (ustawienia, modal archiwum itd.). */
+function closeAllJaSelectLists() {
+    document.querySelectorAll('.ja-select-list.ja-visible').forEach((list) => {
         list.classList.remove('ja-visible');
         const btn = list.previousElementSibling;
         if (btn && btn.classList.contains('ja-select-btn')) {
@@ -1246,8 +1271,8 @@ function bindSettingsJaSelectOutsideOnce() {
     if (_settingsJaSelectDocBound) return;
     _settingsJaSelectDocBound = true;
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.settings-sidebar .ja-select-wrap')) {
-            closeAllSettingsJaSelects();
+        if (!e.target.closest('.ja-select-wrap')) {
+            closeAllJaSelectLists();
         }
     });
 }
@@ -1289,7 +1314,22 @@ function initSettingJaSelects(root) {
 
         function syncFromSelect() {
             const opt = sel.options[sel.selectedIndex];
-            labelSpan.textContent = opt ? opt.textContent.trim() : '';
+            labelSpan.textContent = '';
+            if (!opt) return;
+            const label = opt.textContent.trim();
+            const iconClasses = (opt.dataset.jaIcon || '').trim();
+            if (iconClasses) {
+                const ic = document.createElement('i');
+                ic.className = iconClasses;
+                ic.setAttribute('aria-hidden', 'true');
+                const tx = document.createElement('span');
+                tx.className = 'ja-select-value-text';
+                tx.textContent = label;
+                labelSpan.appendChild(ic);
+                labelSpan.appendChild(tx);
+            } else {
+                labelSpan.textContent = label;
+            }
             list.querySelectorAll('.ja-select-item').forEach((el) => {
                 const v = el.getAttribute('data-value');
                 el.classList.toggle('ja-selected', v === sel.value);
@@ -1304,7 +1344,16 @@ function initSettingJaSelects(root) {
 
             const prefix = document.createElement('span');
             prefix.className = 'ja-select-prefix';
-            prefix.textContent = '›';
+            const optIcon = (opt.dataset.jaIcon || '').trim();
+            if (optIcon) {
+                prefix.classList.add('ja-select-prefix--icon');
+                const pi = document.createElement('i');
+                pi.className = optIcon;
+                pi.setAttribute('aria-hidden', 'true');
+                prefix.appendChild(pi);
+            } else {
+                prefix.textContent = '›';
+            }
 
             const text = document.createElement('span');
             text.textContent = opt.textContent.trim();
@@ -1345,7 +1394,7 @@ function initSettingJaSelects(root) {
         }
 
         function openList() {
-            document.querySelectorAll('.settings-sidebar .ja-select-wrap .ja-select-list.ja-visible').forEach((l) => {
+            document.querySelectorAll('.ja-select-list.ja-visible').forEach((l) => {
                 if (l !== list) {
                     l.classList.remove('ja-visible');
                     const b = l.previousElementSibling;
@@ -1372,6 +1421,16 @@ function initSettingJaSelects(root) {
 }
 
 function showSettings() {
+    const gh =
+        typeof CyberGitHubProjects !== 'undefined'
+            ? CyberGitHubProjects.loadConfig()
+            : { owner: '', repo: '', path: 'data/cyber-code-projects.json', branch: 'main', token: '' };
+    const escAttrGh = (s) =>
+        String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
+
     const html = `
                 <div class="settings-tabs">
                     <div class="settings-tab active" onclick="switchSettingsTab('general')">
@@ -1388,6 +1447,9 @@ function showSettings() {
                     </div>
                     <div class="settings-tab" onclick="switchSettingsTab('advanced')">
                         <i class="fas fa-sliders-h"></i> ADVANCED
+                    </div>
+                    <div class="settings-tab" onclick="switchSettingsTab('github')">
+                        <i class="fab fa-github"></i> GITHUB
                     </div>
                 </div>
                 <div id="settings-general" class="settings-tab-content active">
@@ -1771,6 +1833,96 @@ function showSettings() {
                         </div>
                     </div>
                 </div>
+                <div id="settings-github" class="settings-tab-content settings-github-panel">
+                    <p class="settings-github-intro">
+                        Synchronizacja archiwum (<code>savedProjects</code>) z plikiem JSON w repozytorium GitHub.
+                        Token (PAT) tylko lokalnie. Ikona obok pola tokena pobiera wartość z
+                        — pole <code>cyber_data</code>. <strong>XOR + Base64</strong>: hasło powyżej; puste = bez deszyfrowania.
+                    </p>
+                    <div class="setting-item setting-github-field">
+                        <label class="setting-label" for="gh-owner">
+                            <i class="fab fa-github setting-icon"></i>
+                            <span>Owner / org</span>
+                        </label>
+                        <input type="text" id="gh-owner" class="settings-github-input" autocomplete="off"
+                            placeholder="np. twoj-login" value="${escAttrGh(gh.owner)}">
+                    </div>
+                    <div class="setting-item setting-github-field">
+                        <label class="setting-label" for="gh-repo">
+                            <i class="fas fa-database setting-icon"></i>
+                            <span>Repository</span>
+                        </label>
+                        <input type="text" id="gh-repo" class="settings-github-input" autocomplete="off"
+                            placeholder="nazwa-repo" value="${escAttrGh(gh.repo)}">
+                    </div>
+                    <div class="setting-item setting-github-field">
+                        <label class="setting-label" for="gh-path">
+                            <i class="fas fa-file-code setting-icon"></i>
+                            <span>Ścieżka pliku</span>
+                        </label>
+                        <input type="text" id="gh-path" class="settings-github-input" autocomplete="off"
+                            placeholder="data/cyber-code-projects.json" value="${escAttrGh(gh.path)}">
+                    </div>
+                    <div class="setting-item setting-github-field">
+                        <label class="setting-label" for="gh-branch">
+                            <i class="fas fa-code-branch setting-icon"></i>
+                            <span>Branch</span>
+                        </label>
+                        <input type="text" id="gh-branch" class="settings-github-input" autocomplete="off"
+                            placeholder="main" value="${escAttrGh(gh.branch)}">
+                    </div>
+                    <div class="setting-item setting-github-field">
+                        <label class="setting-label" for="gh-xor-key">
+                            <i class="fas fa-unlock-alt setting-icon"></i>
+                            <span>Hasło XOR (deszyfrowanie)</span>
+                        </label>
+                        <input type="password" id="gh-xor-key" class="settings-github-input" autocomplete="off"
+                            placeholder="${escAttrGh(gh.xorKey ? 'Zapisane — puste = bez zmiany' : 'Klucz do odszyfrowania wartości z auth.json')}"
+                            value="">
+                    </div>
+                    <div class="setting-item setting-github-field">
+                        <label class="setting-label" for="gh-token">
+                            <i class="fas fa-key setting-icon"></i>
+                            <span>Token (PAT)</span>
+                        </label>
+                        <div class="settings-github-token-row">
+                            <input type="password" id="gh-token" class="settings-github-input" autocomplete="off"
+                                placeholder="${escAttrGh(gh.token ? 'Zapisany — puste = bez zmiany' : 'Wymagany do zapisu w repo')}"
+                                value="">
+                            <button type="button" class="btn settings-github-fetch-key" onclick="cyberGithubFetchTokenKey()"
+                                title="Pobierz klucz z auth.json (cyber_data)"
+                                aria-label="Pobierz klucz z auth.json">
+                                <i class="fas fa-cloud-download-alt" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <div class="settings-github-auth-field" aria-live="polite">
+                            <span class="settings-github-keypick-label">Pole w auth.json</span>
+                            <div class="settings-github-cyber-data-row">
+                                <code id="gh-cyber-data-field" class="settings-github-cyber-data-tag">cyber_data</code>
+                                <span id="gh-cyber-data-ok" class="settings-github-cyber-data-ok" hidden></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-github-actions">
+                        <button type="button" class="btn btn-primary settings-github-action-btn" onclick="saveGithubPanelConfig()">
+                            <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-save"></i></span>
+                            <span class="settings-github-action-label">Zapisz konfigurację</span>
+                        </button>
+                        <button type="button" class="btn settings-github-action-btn" onclick="cyberGithubPullMerge()">
+                            <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-download"></i></span>
+                            <span class="settings-github-action-label">Pobierz (scal)</span>
+                        </button>
+                        <button type="button" class="btn btn-danger settings-github-action-btn" onclick="cyberGithubPullReplace()">
+                            <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-sync"></i></span>
+                            <span class="settings-github-action-label">Pobierz (zastąp)</span>
+                        </button>
+                        <button type="button" class="btn settings-github-action-btn" onclick="cyberGithubPush()">
+                            <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-upload"></i></span>
+                            <span class="settings-github-action-label">Wyślij tylko nowe do pliku</span>
+                        </button>
+                    </div>
+                    <p id="gh-panel-status" class="settings-github-status" role="status" aria-live="polite"></p>
+                </div>
             `;
     elements.settingsSidebar.body.innerHTML = html;
     initSettingJaSelects(elements.settingsSidebar.body);
@@ -1779,14 +1931,211 @@ function showSettings() {
 }
 
 function closeSettingsSidebar() {
-    closeAllSettingsJaSelects();
+    closeAllJaSelectLists();
     elements.settingsSidebar.sidebar.classList.remove('active');
     elements.settingsSidebar.overlay.classList.remove('active');
 }
 window.closeSettingsSidebar = closeSettingsSidebar;
 
+function setGithubPanelStatus(msg) {
+    const el = document.getElementById('gh-panel-status');
+    if (el) el.textContent = msg || '';
+}
+
+function saveGithubPanelConfig() {
+    if (typeof CyberGitHubProjects === 'undefined') {
+        showNotification('Brak modułu github-projects.js.', 'error');
+        return;
+    }
+    showConfirmModal(
+        'GitHub — zapis konfiguracji',
+        'Zapisać ustawienia synchronizacji (owner, repo, ścieżka pliku, branch, token, hasło XOR) w pamięci lokalnej przeglądarki?',
+        () => saveGithubPanelConfigExecute(),
+        'ZAPISZ',
+        'btn-primary'
+    );
+}
+window.saveGithubPanelConfig = saveGithubPanelConfig;
+
+function saveGithubPanelConfigExecute() {
+    const owner = document.getElementById('gh-owner')?.value?.trim() ?? '';
+    const repo = document.getElementById('gh-repo')?.value?.trim() ?? '';
+    const pathVal = document.getElementById('gh-path')?.value?.trim() || 'data/cyber-code-projects.json';
+    const branch = document.getElementById('gh-branch')?.value?.trim() || 'main';
+    let token = document.getElementById('gh-token')?.value?.trim() ?? '';
+    let xorKey = document.getElementById('gh-xor-key')?.value?.trim() ?? '';
+    const prev = CyberGitHubProjects.loadConfig();
+    if (!token) {
+        token = prev.token || '';
+    }
+    if (!xorKey) {
+        xorKey = prev.xorKey || '';
+    }
+    CyberGitHubProjects.setConfig({
+        owner,
+        repo,
+        path: pathVal,
+        branch,
+        token,
+        xorKey
+    });
+    const tokInput = document.getElementById('gh-token');
+    if (tokInput) tokInput.value = '';
+    const xorInput = document.getElementById('gh-xor-key');
+    if (xorInput) xorInput.value = '';
+    showNotification('GitHub: zapisano konfigurację.', 'success');
+    setGithubPanelStatus('Konfiguracja zapisana lokalnie.');
+}
+
+async function cyberGithubFetchTokenKey() {
+    if (typeof CyberGitHubProjects === 'undefined') {
+        showNotification('Brak modułu github-projects.js.', 'error');
+        return;
+    }
+    const keyName = 'cyber_data';
+    let xorKey = document.getElementById('gh-xor-key')?.value?.trim() ?? '';
+    if (!xorKey) {
+        xorKey = CyberGitHubProjects.loadConfig().xorKey || '';
+    }
+    const okEl = document.getElementById('gh-cyber-data-ok');
+    if (okEl) {
+        okEl.textContent = '';
+        okEl.hidden = true;
+        okEl.classList.remove('is-visible');
+    }
+    setGithubPanelStatus('Pobieranie auth.json…');
+    try {
+        const { value, keyUsed, decrypted } = await CyberGitHubProjects.fetchPatFromAuthJson({
+            keyName,
+            xorKey
+        });
+        const inp = document.getElementById('gh-token');
+        if (inp) inp.value = value;
+        const note = decrypted ? ' (XOR → jawny token)' : '';
+        showNotification(`Wczytano cyber_data${note}. Zapisz konfigurację.`, 'success');
+        setGithubPanelStatus(`cyber_data: klucz w polu tokena${note} — zapisz konfigurację.`);
+        if (okEl && keyUsed === 'cyber_data') {
+            okEl.textContent = '✓ pobrano';
+            okEl.hidden = false;
+            okEl.classList.add('is-visible');
+        }
+    } catch (e) {
+        showNotification(e.message || String(e), 'error');
+        setGithubPanelStatus('Nie udało się pobrać cyber_data z auth.json.');
+    }
+}
+window.cyberGithubFetchTokenKey = cyberGithubFetchTokenKey;
+
+function cyberGithubPullMerge() {
+    if (typeof CyberGitHubProjects === 'undefined') {
+        showNotification('Brak modułu github-projects.js.', 'error');
+        return;
+    }
+    showConfirmModal(
+        'GitHub — pobierz (scal)',
+        'Pobrać projekty z pliku w repozytorium i <strong>scalić</strong> z lokalną biblioteką?<br><br>Nowe wpisy zostaną dopisane; powtarzające się nazwy dostaną sufiks (import).',
+        () => {
+            cyberGithubPullMergeRun();
+        },
+        'SCAL',
+        'btn-primary'
+    );
+}
+window.cyberGithubPullMerge = cyberGithubPullMerge;
+
+async function cyberGithubPullMergeRun() {
+    setGithubPanelStatus('Pobieranie z GitHub…');
+    try {
+        const r = await CyberGitHubProjects.pull({ mode: 'merge' });
+        if (r.message) {
+            showNotification(r.message, 'info');
+            setGithubPanelStatus(r.message);
+        } else {
+            const line = `Scalono: ${r.count} z GitHub → biblioteka ${r.total} projektów.`;
+            showNotification(line, 'success');
+            setGithubPanelStatus(line);
+        }
+    } catch (e) {
+        showNotification(e.message || String(e), 'error');
+        setGithubPanelStatus('Błąd pobierania.');
+    }
+}
+
+function cyberGithubPullReplace() {
+    if (typeof CyberGitHubProjects === 'undefined') {
+        showNotification('Brak modułu github-projects.js.', 'error');
+        return;
+    }
+    showConfirmModal(
+        'GitHub — pobierz (zastąp)',
+        '<strong>Całkowicie zastąpić</strong> lokalną bibliotekę projektów zawartością pliku z repozytorium?<br><br>Obecna lista w przeglądarce zostanie usunięta — tej operacji nie cofniesz z poziomu aplikacji.',
+        () => {
+            cyberGithubPullReplaceRun();
+        },
+        'ZASTĄP',
+        'btn-danger'
+    );
+}
+window.cyberGithubPullReplace = cyberGithubPullReplace;
+
+async function cyberGithubPullReplaceRun() {
+    setGithubPanelStatus('Zastępowanie biblioteki…');
+    try {
+        const r = await CyberGitHubProjects.pull({ mode: 'replace' });
+        const line = `Biblioteka zastąpiona: ${r.count} projekt(ów).`;
+        showNotification(line, 'success');
+        setGithubPanelStatus(line);
+    } catch (e) {
+        showNotification(e.message || String(e), 'error');
+        setGithubPanelStatus('Błąd.');
+    }
+}
+
+function cyberGithubPush() {
+    if (typeof CyberGitHubProjects === 'undefined') {
+        showNotification('Brak modułu github-projects.js.', 'error');
+        return;
+    }
+    let n = 0;
+    try {
+        n = JSON.parse(localStorage.getItem('savedProjects') || '[]').length;
+    } catch (_) {
+        n = 0;
+    }
+    showConfirmModal(
+        'GitHub — wyślij nowe',
+        `Plik w repozytorium zostanie <strong>rozszerzony</strong> — bez kasowania wpisów, które już tam są.<br><br>Na GitHub trafią wyłącznie projekty <strong>zapisane lokalnie w tej przeglądarce</strong> (nie te oznaczone jako pobrane z synchronizacji GitHub), o <strong>nazwach</strong>, których jeszcze <strong>nie ma</strong> w zdalnym pliku.<br><br>Lokalna biblioteka: <strong>${n}</strong> projekt(ów). Wymagany token z uprawnieniem zapisu (Contents).`,
+        () => {
+            cyberGithubPushRun();
+        },
+        'WYŚLIJ',
+        'btn-primary'
+    );
+}
+window.cyberGithubPush = cyberGithubPush;
+
+async function cyberGithubPushRun() {
+    setGithubPanelStatus('Wysyłanie na GitHub…');
+    try {
+        const r = await CyberGitHubProjects.push({
+            message: `Cyber Code: nowe projekty ${new Date().toISOString()}`
+        });
+        if (r.message) {
+            showNotification(r.message, 'info');
+            setGithubPanelStatus(r.message);
+        } else {
+            const line = `Dopisano ${r.added} nowych projekt(ów). W pliku na GitHub: ${r.projects} łącznie.`;
+            showNotification(line, 'success');
+            setGithubPanelStatus(line);
+        }
+    } catch (e) {
+        showNotification(e.message || String(e), 'error');
+        setGithubPanelStatus('Błąd wysyłki (token / ścieżka / sieć).');
+    }
+}
+
 function switchSettingsTab(tab) {
-    closeAllSettingsJaSelects();
+    closeAllJaSelectLists();
     // Hide all tab contents
     document.querySelectorAll('.settings-tab-content').forEach(content => {
         content.classList.remove('active');
@@ -1943,6 +2292,43 @@ function loadView() {
 
 // Debounce function to avoid too frequent saves
 let saveTimeout = null;
+
+function writeAutoSavedProjectPayload(project) {
+    try {
+        localStorage.setItem('autoSavedProject', JSON.stringify(project));
+    } catch (e) {
+        if (e.name === 'QuotaExceededError') {
+            console.warn('Autosave failed: Storage quota exceeded');
+            try {
+                localStorage.removeItem('autoSavedProject');
+                localStorage.setItem('autoSavedProject', JSON.stringify(project));
+            } catch (err) {
+                console.error('Could not save autosave:', err);
+            }
+        }
+    }
+}
+
+/** Zapisuje aktualną zawartość edytorów do localStorage od razu (np. po wczytaniu archiwum), bez debouncu. */
+function flushAutoSaveNow() {
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+    }
+    try {
+        if (!editors.html || !editors.css || !editors.js) return;
+        const project = {
+            html: editors.html.getValue(),
+            css: editors.css.getValue(),
+            js: editors.js.getValue(),
+            timestamp: new Date().toISOString()
+        };
+        writeAutoSavedProjectPayload(project);
+    } catch (e) {
+        console.error('Autosave flush error:', e);
+    }
+}
+
 function saveToLocalStorage() {
     // Clear existing timeout
     if (saveTimeout) {
@@ -1967,20 +2353,7 @@ function saveToLocalStorage() {
                 timestamp: new Date().toISOString()
             };
 
-            try {
-                localStorage.setItem('autoSavedProject', JSON.stringify(project));
-            } catch (e) {
-                if (e.name === 'QuotaExceededError') {
-                    console.warn('Autosave failed: Storage quota exceeded');
-                    // Try to clear old autosave
-                    try {
-                        localStorage.removeItem('autoSavedProject');
-                        localStorage.setItem('autoSavedProject', JSON.stringify(project));
-                    } catch (err) {
-                        console.error('Could not save autosave:', err);
-                    }
-                }
-            }
+            writeAutoSavedProjectPayload(project);
         } catch (e) {
             console.error('Autosave error:', e);
         }
@@ -2082,10 +2455,19 @@ function showConfirmModal(title, msg, onConfirm, confirmText = 'CONFIRM', confir
     const confirmIcon = document.getElementById('modal-confirm-icon');
     if (confirmIcon) {
         confirmIcon.className = 'fas modal-action-btn__icon';
+        const ct = String(confirmText || '').toUpperCase();
         if (confirmClass.includes('danger')) {
-            confirmIcon.classList.add('fa-trash-can');
-        } else if (String(confirmText).toUpperCase() === 'LOAD') {
+            confirmIcon.classList.add(ct === 'ZASTĄP' ? 'fa-triangle-exclamation' : 'fa-trash-can');
+        } else if (ct === 'LOAD') {
             confirmIcon.classList.add('fa-folder-open');
+        } else if (/URUCHOM|RUN|EXECUTE|START/i.test(String(confirmText))) {
+            confirmIcon.classList.add('fa-play');
+        } else if (ct === 'ZAPISZ') {
+            confirmIcon.classList.add('fa-floppy-disk');
+        } else if (ct === 'SCAL') {
+            confirmIcon.classList.add('fa-layer-group');
+        } else if (ct === 'WYŚLIJ') {
+            confirmIcon.classList.add('fa-upload');
         } else {
             confirmIcon.classList.add('fa-check');
         }
@@ -2102,6 +2484,38 @@ function showConfirmModal(title, msg, onConfirm, confirmText = 'CONFIRM', confir
 
     openModal();
 }
+
+/**
+ * Modal zatwierdzenia w stylu strony — do wywołania z iframe podglądu (window.parent.showCyberConfirm).
+ */
+function showCyberConfirm(title, message, onConfirm, confirmText, confirmClass) {
+    showConfirmModal(title, message, onConfirm, confirmText || 'CONFIRM', confirmClass || 'btn-primary');
+}
+window.showCyberConfirm = showCyberConfirm;
+
+/** Jednoprzyciskowy modal informacyjny (jak reszta UI) */
+function showCyberAlert(title, message, okLabel) {
+    const safe = String(message || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    const label = String(okLabel || 'OK')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    showCustomModal(
+        title,
+        '<p style="color:var(--text-color); font-size:0.9rem; line-height:1.5;">' + safe + '</p>' +
+        '<div style="margin-top:18px; display:flex; justify-content:flex-end;">' +
+        '<button type="button" class="btn btn-primary modal-action-btn" onclick="closeModal()">' +
+        '<i class="fas fa-check modal-action-btn__icon" aria-hidden="true"></i>' +
+        '<span class="modal-action-btn__label">' + label + '</span>' +
+        '</button></div>',
+        null,
+        'confirm-modal'
+    );
+}
+window.showCyberAlert = showCyberAlert;
 
 function showCustomModal(title, content, onOpen, sizeClass) {
     elements.modal.title.textContent = title;
