@@ -694,14 +694,20 @@ function refreshPreview() {
 
 // --- Project Management Functions (Abbreviated for conciseness but functional) ---
 function newProject() {
-    showConfirmModal('New Protocol', 'Initialize new project sequence? Unsaved data will be purged.', () => {
-        editors.html.setValue(defaultContent.html.replace("SYSTEM READY", "NEW PROJECT"));
-        editors.css.setValue(defaultContent.css);
-        editors.js.setValue(defaultContent.js);
-        updatePreview();
-        flushAutoSaveNow();
-        showNotification('New project initialized.', 'success');
-    });
+    showConfirmModal(
+        'Nowy protokół',
+        'Uruchomić nowy szablon? <strong>Niezapisana treść</strong> w edytorach zostanie utracona.',
+        () => {
+            editors.html.setValue(defaultContent.html.replace('SYSTEM READY', 'NEW PROJECT'));
+            editors.css.setValue(defaultContent.css);
+            editors.js.setValue(defaultContent.js);
+            updatePreview();
+            flushAutoSaveNow();
+            showNotification('Nowy projekt wczytany.', 'success');
+        },
+        'UTWÓRZ',
+        'btn-primary'
+    );
 }
 
 function saveProject() {
@@ -727,28 +733,37 @@ function getArchiveSourceLabel(p) {
 
 function showSaveProjectModal() {
     const modalHTML = `
+                <div class="modal-body-main">
+                <p class="save-archive-hint">
+                    Zapis bieżącego kodu (HTML, CSS, JS) do <strong style="color:var(--text-color)">lokalnej biblioteki</strong> w tej przeglądarce.
+                </p>
                 <div class="command-center-grid">
                     <div class="info-card">
-                        <div class="card-header"><span>PROJECT NAME</span></div>
-                        <input type="text" id="project-name" class="modal-input" placeholder="Enter protocol name">
+                        <div class="card-header"><span>NAZWA PROJEKTU</span></div>
+                        <input type="text" id="project-name" class="modal-input" placeholder="np. mój-layout-cyber" autocomplete="off">
                     </div>
                      <div class="info-card">
-                        <div class="card-header"><span>CATEGORY</span></div>
-                         <select id="project-category" class="setting-select-input archive-category-select" aria-label="Project category">
-                            <option value="Website" data-ja-icon="fas fa-globe" selected>Website</option>
-                            <option value="Component" data-ja-icon="fas fa-cube">Component</option>
-                            <option value="Experiment" data-ja-icon="fas fa-flask">Experiment</option>
+                        <div class="card-header"><span>KATEGORIA</span></div>
+                         <select id="project-category" class="setting-select-input archive-category-select" aria-label="Kategoria projektu">
+                            <option value="Website" data-ja-icon="fas fa-globe" selected>Strona (Website)</option>
+                            <option value="Component" data-ja-icon="fas fa-cube">Komponent</option>
+                            <option value="Experiment" data-ja-icon="fas fa-flask">Eksperyment</option>
                         </select>
                     </div>
                 </div>
+                </div>
                 <div class="modal-body-actions">
+                    <button type="button" class="btn modal-action-btn" onclick="closeModal()">
+                        <i class="fas fa-xmark modal-action-btn__icon" aria-hidden="true"></i>
+                        <span class="modal-action-btn__label">ANULUJ</span>
+                    </button>
                     <button type="button" class="btn btn-primary modal-action-btn" onclick="confirmSaveProject()">
                         <i class="fas fa-floppy-disk modal-action-btn__icon" aria-hidden="true"></i>
-                        <span class="modal-action-btn__label">EXECUTE SAVE</span>
+                        <span class="modal-action-btn__label">ZAPISZ</span>
                     </button>
                 </div>
             `;
-    showCustomModal('ARCHIVE DATA', modalHTML, () => {
+    showCustomModal('Zapis w bibliotece', modalHTML, () => {
         initSettingJaSelects(elements.modal.body);
         const nameEl = document.getElementById('project-name');
         if (nameEl) nameEl.focus();
@@ -756,58 +771,97 @@ function showSaveProjectModal() {
 }
 
 function confirmSaveProject() {
-    const name = document.getElementById('project-name').value.trim();
-    const category = document.getElementById('project-category').value || 'Website';
+    const nameEl = document.getElementById('project-name');
+    const catEl = document.getElementById('project-category');
+    if (!nameEl || !catEl) return;
+
+    const name = nameEl.value.trim();
+    const category = catEl.value || 'Website';
 
     if (!name) {
-        showNotification('Name required.', 'warning');
+        showNotification('Podaj nazwę projektu.', 'warning');
         return;
     }
 
+    const project = {
+        id: Date.now(),
+        name: name,
+        category: category,
+        html: editors.html.getValue(),
+        css: editors.css.getValue(),
+        js: editors.js.getValue(),
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+        fromGithub: false
+    };
+
+    let projects;
     try {
-        const project = {
-            id: Date.now(),
-            name: name,
-            category: category,
-            html: editors.html.getValue(),
-            css: editors.css.getValue(),
-            js: editors.js.getValue(),
-            created: new Date().toISOString(),
-            modified: new Date().toISOString(),
-            fromGithub: false
-        };
+        projects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
+    } catch (e) {
+        showNotification('Błąd odczytu biblioteki: ' + e.message, 'error');
+        return;
+    }
 
-        const projects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
+    const existingIndex = projects.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
 
-        // Check if project with same name exists
-        const existingIndex = projects.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-        if (existingIndex !== -1) {
-            if (confirm(`Project "${name}" already exists. Overwrite?`)) {
-                project.id = projects[existingIndex].id;
-                project.created = projects[existingIndex].created;
-                project.fromGithub = false;
-                projects[existingIndex] = project;
-            } else {
-                return;
-            }
-        } else {
-            projects.push(project);
-        }
+    const escArchive = (s) =>
+        String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-        // Try to save with error handling
+    function persistProjectList(list) {
         try {
-            localStorage.setItem('savedProjects', JSON.stringify(projects));
+            localStorage.setItem('savedProjects', JSON.stringify(list));
             closeModal();
-            showNotification(`Protocol "${name}" archived.`, 'success');
+            showNotification(`Zapisano w bibliotece: „${name}”.`, 'success');
         } catch (e) {
             if (e.name === 'QuotaExceededError') {
-                showNotification('Storage full. Please delete some projects.', 'error');
+                showNotification(
+                    'Brak miejsca w pamięci przeglądarki. Usuń stare wpisy z biblioteki i spróbuj ponownie.',
+                    'error'
+                );
             } else {
-                showNotification('Save failed: ' + e.message, 'error');
+                showNotification('Zapis nie powiódł się: ' + e.message, 'error');
             }
         }
+    }
+
+    if (existingIndex !== -1) {
+        closeModal();
+        setTimeout(() => {
+            showConfirmModal(
+                'Nadpisanie wpisu',
+                `Projekt <strong style="color:var(--highlight)">${escArchive(name)}</strong> już jest w bibliotece. Nadpisać zawartość HTML, CSS i JS?`,
+                () => {
+                    try {
+                        const list = JSON.parse(localStorage.getItem('savedProjects') || '[]');
+                        const idx = list.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+                        if (idx === -1) {
+                            showNotification('Nie znaleziono wpisu — zapis anulowany.', 'warning');
+                            return;
+                        }
+                        const merged = { ...project };
+                        merged.id = list[idx].id;
+                        merged.created = list[idx].created;
+                        merged.fromGithub = false;
+                        list[idx] = merged;
+                        persistProjectList(list);
+                    } catch (err) {
+                        showNotification('Błąd zapisu: ' + err.message, 'error');
+                        console.error('Overwrite save error:', err);
+                    }
+                },
+                'NADPISZ',
+                'btn-danger'
+            );
+        }, 220);
+        return;
+    }
+
+    projects.push(project);
+    try {
+        persistProjectList(projects);
     } catch (e) {
-        showNotification('Error saving project: ' + e.message, 'error');
+        showNotification('Błąd zapisu: ' + e.message, 'error');
         console.error('Save error:', e);
     }
 }
@@ -816,7 +870,7 @@ function loadProject() {
     try {
         const projects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
         if (projects.length === 0) {
-            showNotification('No archives found.', 'info');
+            showNotification('Brak zapisanych projektów.', 'info');
             return;
         }
 
@@ -827,18 +881,22 @@ function loadProject() {
             return dateB - dateA;
         });
 
-        const listHTML = sortedProjects.map((p, idx) => {
-            const originalIndex = projects.findIndex(proj => proj.id === p.id);
-            const modified = p.modified || p.created;
-            const category = p.category || 'Website';
-            const sourceIcon = getArchiveSourceIconClass(p);
-            const sourceMod = p.fromGithub === true ? 'github' : 'local';
-            const sourceTitle = getArchiveSourceLabel(p);
-            const categoryIcon = getProjectCategoryIconClass(category);
-            const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const nameSafe = esc(p.name);
-            const categorySafe = esc(category);
-            return `
+        const listIntro = `<p class="load-archive-hint">Kliknij kartę, aby wczytać projekt do edytorów. <strong>Kosz</strong> — trwałe usunięcie z biblioteki.</p>`;
+
+        const listHTML =
+            listIntro +
+            sortedProjects.map((p, idx) => {
+                const originalIndex = projects.findIndex(proj => proj.id === p.id);
+                const modified = p.modified || p.created;
+                const category = p.category || 'Website';
+                const sourceIcon = getArchiveSourceIconClass(p);
+                const sourceMod = p.fromGithub === true ? 'github' : 'local';
+                const sourceTitle = getArchiveSourceLabel(p);
+                const categoryIcon = getProjectCategoryIconClass(category);
+                const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const nameSafe = esc(p.name);
+                const categorySafe = esc(category);
+                return `
                 <div class="info-card project-card-clickable archive-card" onclick="loadProjectByIndex(${originalIndex})" onmouseenter="this.querySelector('.delete-btn-container').style.opacity='1'" onmouseleave="this.querySelector('.delete-btn-container').style.opacity='0'">
                     <div class="archive-card-top">
                         <div class="archive-card-icon archive-card-source--${sourceMod}" title="${esc(sourceTitle)}"><i class="${sourceIcon}" aria-hidden="true"></i></div>
@@ -852,17 +910,18 @@ function loadProject() {
                         <div class="archive-card-date">${new Date(modified).toLocaleDateString()}</div>
                     </div>
                     <div class="delete-btn-container">
-                        <button class="btn btn-icon btn-danger" onclick="event.stopPropagation(); deleteProject(${originalIndex});" title="Delete">
+                        <button class="btn btn-icon btn-danger" onclick="event.stopPropagation(); deleteProject(${originalIndex});" title="Usuń z biblioteki">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
             `;
-        }).join('');
+            })
+                .join('');
 
-        showCustomModal('LOAD ARCHIVE', listHTML, null, 'load-archive-modal');
+        showCustomModal('Biblioteka projektów', listHTML, null, 'load-archive-modal');
     } catch (e) {
-        showNotification('Error loading projects: ' + e.message, 'error');
+        showNotification('Błąd listy projektów: ' + e.message, 'error');
         console.error('Load error:', e);
     }
 }
@@ -872,7 +931,7 @@ function loadProjectByIndex(index) {
         const projects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
         const p = projects[index];
         if (!p) {
-            showNotification('Project not found.', 'error');
+            showNotification('Nie znaleziono projektu.', 'error');
             return;
         }
 
@@ -885,9 +944,11 @@ function loadProjectByIndex(index) {
 
         // Show confirmation modal after modal animation completes
         setTimeout(() => {
+            const escN = (s) =>
+                String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             showConfirmModal(
-                'Load Archive',
-                `Load project "${projectToLoad.name}"?<br><br>Current unsaved changes will be lost.`,
+                'Wczytaj projekt',
+                `Wczytać <strong style="color:var(--highlight)">${escN(projectToLoad.name)}</strong> do edytorów?<br><br>Bieżąca, <strong>niezapisana</strong> treść w buforach zostanie zastąpiona.`,
                 () => {
                     try {
                         editors.html.setValue(projectToLoad.html || '');
@@ -895,13 +956,13 @@ function loadProjectByIndex(index) {
                         editors.js.setValue(projectToLoad.js || '');
                         updatePreview();
                         flushAutoSaveNow();
-                        showNotification(`Archive "${projectToLoad.name}" loaded.`, 'success');
+                        showNotification(`Wczytano: „${projectToLoad.name}”.`, 'success');
                     } catch (e) {
-                        showNotification('Error loading project: ' + e.message, 'error');
+                        showNotification('Błąd wczytywania: ' + e.message, 'error');
                         console.error('Load project error:', e);
                     }
                 },
-                'LOAD',
+                'WCZYTAJ',
                 'btn-primary'
             );
         }, 350); // Wait for modal close animation (300ms) + small buffer
@@ -912,21 +973,27 @@ function loadProjectByIndex(index) {
 }
 
 function deleteProject(index) {
-    showConfirmModal('Delete Project', 'Are you sure you want to delete this project? This action cannot be undone.', () => {
-        try {
-            const projects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
-            if (index >= 0 && index < projects.length) {
-                const projectName = projects[index].name;
-                projects.splice(index, 1);
-                localStorage.setItem('savedProjects', JSON.stringify(projects));
-                showNotification(`Project "${projectName}" deleted.`, 'success');
-                loadProject(); // Refresh the list
+    showConfirmModal(
+        'Usuń projekt',
+        'Usunąć ten wpis z biblioteki lokalnej? Tej operacji nie cofniesz w aplikacji.',
+        () => {
+            try {
+                const projects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
+                if (index >= 0 && index < projects.length) {
+                    const projectName = projects[index].name;
+                    projects.splice(index, 1);
+                    localStorage.setItem('savedProjects', JSON.stringify(projects));
+                    showNotification(`Usunięto: „${projectName}”.`, 'success');
+                    loadProject();
+                }
+            } catch (e) {
+                showNotification('Błąd usuwania: ' + e.message, 'error');
+                console.error('Delete error:', e);
             }
-        } catch (e) {
-            showNotification('Error deleting project: ' + e.message, 'error');
-            console.error('Delete error:', e);
-        }
-    }, 'DELETE', 'btn-danger');
+        },
+        'USUŃ',
+        'btn-danger'
+    );
 }
 
 function downloadProject() {
@@ -938,7 +1005,7 @@ function downloadProject() {
     a.download = 'project_export.html';
     a.click();
     URL.revokeObjectURL(url);
-    showNotification('Export successful.', 'success');
+    showNotification('Pobrano plik HTML podglądu.', 'success');
 }
 
 // --- Import / export zapisanych projektów (localStorage savedProjects) ---
@@ -1075,11 +1142,13 @@ function onImportProjectsFileSelected(ev) {
             }
             pendingImportProjects = projects;
             const html = `
+                <div class="modal-body-main">
                 <p>Znaleziono <strong style="color:var(--highlight)">${projects.length}</strong> projekt(ów).</p>
                 <p style="margin-top:10px; font-size:0.85rem; color:var(--text-muted); line-height:1.4;">
                     <strong>Scal</strong> — dopisz do istniejącej listy (powtarzające się nazwy dostaną sufiks <code>(import N)</code>).<br>
                     <strong>Zastąp wszystko</strong> — usuń obecną bibliotekę i wstaw tylko import (nieodwracalne).
                 </p>
+                </div>
                 <div class="modal-body-actions">
                     <button type="button" class="btn modal-action-btn" onclick="closeModal(); applyProjectsImport('merge');">
                         <i class="fas fa-layer-group modal-action-btn__icon" aria-hidden="true"></i>
@@ -1111,20 +1180,34 @@ async function formatCode() {
 }
 
 function clearCode() {
-    showConfirmModal('Purge Buffer', `Clear active ${currentTab.toUpperCase()} buffer?`, () => {
-        editors[currentTab].setValue('');
-        updatePreview();
-    }, 'PURGE', 'btn-danger');
+    const tabLabel = currentTab === 'html' ? 'HTML' : currentTab === 'css' ? 'CSS' : 'JS';
+    showConfirmModal(
+        'Wyczyść bufor',
+        `Wyczyścić tylko edytor <strong>${tabLabel}</strong>? Podgląd zostanie przeliczony.`,
+        () => {
+            editors[currentTab].setValue('');
+            updatePreview();
+            showNotification(`Wyczyszczono ${tabLabel}.`, 'info');
+        },
+        'WYCZYŚĆ',
+        'btn-danger'
+    );
 }
 
 function cleanAll() {
-    showConfirmModal('Purge All Buffers', 'Clear all editors (HTML, CSS, JS)? This action cannot be undone.', () => {
-        editors.html.setValue('');
-        editors.css.setValue('');
-        editors.js.setValue('');
-        updatePreview();
-        showNotification('All editors cleared.', 'success');
-    }, 'PURGE ALL', 'btn-danger');
+    showConfirmModal(
+        'Wyczyść wszystkie bufory',
+        'Wyczyścić <strong>HTML, CSS i JS</strong> naraz? Niezapisana treść w edytorach zostanie utracona.',
+        () => {
+            editors.html.setValue('');
+            editors.css.setValue('');
+            editors.js.setValue('');
+            updatePreview();
+            showNotification('Wyczyszczono wszystkie edytory.', 'success');
+        },
+        'WYCZYŚĆ WSZYSTKO',
+        'btn-danger'
+    );
 }
 
 // --- Settings & Utils ---
@@ -2195,20 +2278,20 @@ function updateSetting(key, val) {
 function showShortcuts() {
     const html = `
                 <div class="info-card">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <div><strong style="color:var(--highlight)">Ctrl + S</strong> Save</div>
-                        <div><strong style="color:var(--highlight)">Ctrl + Enter</strong> Run</div>
-                        <div><strong style="color:var(--highlight)">Ctrl + N</strong> New</div>
-                        <div><strong style="color:var(--highlight)">Ctrl + O</strong> Load</div>
-                        <div><strong style="color:var(--highlight)">F1</strong> Shortcuts</div>
-                        <div><strong style="color:var(--highlight)">Ctrl + T</strong> Theme</div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.8rem;">
+                        <div><strong style="color:var(--highlight)">Ctrl + S</strong> — zapis autosave / archiwum</div>
+                        <div><strong style="color:var(--highlight)">Ctrl + Enter</strong> — uruchom podgląd</div>
+                        <div><strong style="color:var(--highlight)">Ctrl + N</strong> — nowy projekt</div>
+                        <div><strong style="color:var(--highlight)">Ctrl + O</strong> — biblioteka projektów</div>
+                        <div><strong style="color:var(--highlight)">F1</strong> — ten panel</div>
+                        <div><strong style="color:var(--highlight)">Ctrl + T</strong> — motyw jasny / ciemny</div>
                     </div>
-                    <p style="margin-top:12px; font-size:0.75rem; color:var(--text-muted); line-height:1.4;">
-                        Eksport / import zapisanych projektów (JSON): ikony <i class="fas fa-file-export"></i> / <i class="fas fa-file-import"></i> na pasku.
+                    <p style="margin-top:12px; font-size:0.75rem; color:var(--text-muted); line-height:1.45;">
+                        Eksport / import biblioteki (JSON): ikony na pasku <i class="fas fa-file-export" aria-hidden="true"></i> oraz <i class="fas fa-file-import" aria-hidden="true"></i>.
                     </p>
                 </div>
              `;
-    showCustomModal('KEY BINDINGS', html, null, 'keybindings-modal');
+    showCustomModal('Skróty klawiszowe', html, null, 'keybindings-modal');
 }
 
 // --- Theme & Visuals ---
@@ -2435,21 +2518,38 @@ function closeModal() {
         elements.modal.confirmBtn.style.display = 'inline-flex';
         // Remove all size classes
         elements.modal.modal.classList.remove('snippets-modal', 'settings-modal', 'archive-modal', 'load-archive-modal', 'keybindings-modal', 'confirm-modal');
+        elements.modal.modal.removeAttribute('data-alert-type');
     }, 300);
 }
 
-function showConfirmModal(title, msg, onConfirm, confirmText = 'CONFIRM', confirmClass = 'btn-primary') {
+/** Po „?” w treści potwierdzenia wstawia odstęp + nową linię, jeśli nie ma już <br> (czytelny blok wyjaśnienia pod pytaniem). */
+function layoutConfirmHtmlAfterQuestion(html) {
+    return String(html).replace(/\?(?!\s*<br)(?=.)/gi, '?<br><br>');
+}
+
+function showConfirmModal(title, msg, onConfirm, confirmText = 'ZATWIERDŹ', confirmClass = 'btn-primary') {
     // Reset modal state first
     elements.modal.title.textContent = title;
-    elements.modal.body.innerHTML = msg; // Use innerHTML to support HTML formatting
+    let hudType = 'info';
+    const cc = String(confirmClass || '');
+    if (cc.includes('danger')) {
+        hudType = 'critical';
+    } else if (cc.includes('warning')) {
+        hudType = 'warning';
+    } else if (cc.includes('success')) {
+        hudType = 'success';
+    }
+    elements.modal.modal.setAttribute('data-alert-type', hudType);
+    elements.modal.body.innerHTML =
+        `<div class="confirm-message">${layoutConfirmHtmlAfterQuestion(msg)}</div>`;
     elements.modal.actions.style.display = 'flex'; // Make sure actions are visible
     elements.modal.confirmBtn.style.display = 'inline-flex';
     elements.modal.cancelBtn.style.display = 'inline-flex';
 
     const cancelLabel = elements.modal.cancelBtn.querySelector('.modal-action-btn__label');
     const confirmLabel = elements.modal.confirmBtn.querySelector('.modal-action-btn__label');
-    if (cancelLabel) cancelLabel.textContent = 'CANCEL';
-    else elements.modal.cancelBtn.textContent = 'CANCEL';
+    if (cancelLabel) cancelLabel.textContent = 'ANULUJ';
+    else elements.modal.cancelBtn.textContent = 'ANULUJ';
     if (confirmLabel) confirmLabel.textContent = confirmText;
     else elements.modal.confirmBtn.textContent = confirmText;
 
@@ -2460,10 +2560,20 @@ function showConfirmModal(title, msg, onConfirm, confirmText = 'CONFIRM', confir
     if (confirmIcon) {
         confirmIcon.className = 'fas modal-action-btn__icon';
         const ct = String(confirmText || '').toUpperCase();
-        if (confirmClass.includes('danger')) {
-            confirmIcon.classList.add(ct === 'ZASTĄP' ? 'fa-triangle-exclamation' : 'fa-trash-can');
-        } else if (ct === 'LOAD') {
+        if (cc.includes('danger')) {
+            if (ct === 'NADPISZ') {
+                confirmIcon.classList.add('fa-floppy-disk');
+            } else if (ct === 'ZASTĄP' || ct === 'ZASTĄP WSZYSTKO') {
+                confirmIcon.classList.add('fa-triangle-exclamation');
+            } else if (ct.includes('WYCZYŚĆ')) {
+                confirmIcon.classList.add('fa-eraser');
+            } else {
+                confirmIcon.classList.add('fa-trash-can');
+            }
+        } else if (ct === 'LOAD' || ct === 'WCZYTAJ') {
             confirmIcon.classList.add('fa-folder-open');
+        } else if (ct === 'UTWÓRZ') {
+            confirmIcon.classList.add('fa-file-circle-plus');
         } else if (/URUCHOM|RUN|EXECUTE|START/i.test(String(confirmText))) {
             confirmIcon.classList.add('fa-play');
         } else if (ct === 'ZAPISZ') {
@@ -2493,7 +2603,7 @@ function showConfirmModal(title, msg, onConfirm, confirmText = 'CONFIRM', confir
  * Modal zatwierdzenia w stylu strony — do wywołania z iframe podglądu (window.parent.showCyberConfirm).
  */
 function showCyberConfirm(title, message, onConfirm, confirmText, confirmClass) {
-    showConfirmModal(title, message, onConfirm, confirmText || 'CONFIRM', confirmClass || 'btn-primary');
+    showConfirmModal(title, message, onConfirm, confirmText || 'ZATWIERDŹ', confirmClass || 'btn-primary');
 }
 window.showCyberConfirm = showCyberConfirm;
 
@@ -2509,12 +2619,15 @@ function showCyberAlert(title, message, okLabel) {
         .replace(/>/g, '&gt;');
     showCustomModal(
         title,
-        '<p style="color:var(--text-color); font-size:0.9rem; line-height:1.5;">' + safe + '</p>' +
-        '<div style="margin-top:18px; display:flex; justify-content:flex-end;">' +
+        '<div class="modal-body-main"><p style="color:var(--text-color); font-size:0.9rem; line-height:1.5;">' +
+        safe +
+        '</p></div>' +
+        '<div class="modal-body-actions">' +
         '<button type="button" class="btn btn-primary modal-action-btn" onclick="closeModal()">' +
         '<i class="fas fa-check modal-action-btn__icon" aria-hidden="true"></i>' +
-        '<span class="modal-action-btn__label">' + label + '</span>' +
-        '</button></div>',
+        '<span class="modal-action-btn__label">' +
+        label +
+        '</span></button></div>',
         null,
         'confirm-modal'
     );
@@ -2532,6 +2645,12 @@ function showCustomModal(title, content, onOpen, sizeClass) {
     // Add the specified size class
     if (sizeClass) {
         elements.modal.modal.classList.add(sizeClass);
+    }
+
+    if (sizeClass === 'confirm-modal') {
+        elements.modal.modal.setAttribute('data-alert-type', 'info');
+    } else {
+        elements.modal.modal.removeAttribute('data-alert-type');
     }
 
     openModal();
