@@ -315,7 +315,7 @@ function initializeEditors() {
         return;
     }
 
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.49.0/min/vs' } });
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs' } });
     require(['vs/editor/editor.main'], () => {
         console.log('Monaco Editor loaded successfully');
 
