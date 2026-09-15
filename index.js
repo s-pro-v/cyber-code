@@ -777,33 +777,24 @@ function refreshPreview() {
   showNotification("Preview refreshed.", "info");
 }
 
-// --- Project Management Functions (Abbreviated for conciseness but functional) ---
+// --- Project Management Functions ---
 function newProject() {
   showConfirmModal(
-    "Wczytaj projekt",
-    `Wczytać <strong style="color:var(--highlight)">${escN(projectToLoad.name)}</strong> do edytorów?<br><br>Bieżąca, <strong>niezapisana</strong> treść w buforach zostanie zastąpiona.`,
+    "Nowy projekt",
+    `Czy na pewno chcesz utworzyć nowy projekt?<br><br>Bieżąca, <strong>niezapisana</strong> treść w buforach zostanie utracona.`,
     () => {
       try {
-        editors.html.setValue(projectToLoad.html || "");
-        editors.css.setValue(projectToLoad.css || "");
-        editors.js.setValue(projectToLoad.js || "");
+        editors.html.setValue(defaultContent.html);
+        editors.css.setValue(defaultContent.css);
+        editors.js.setValue(defaultContent.js);
         updatePreview();
         flushAutoSaveNow();
-        showNotification(`Wczytano: „${projectToLoad.name}”.`, "success");
-
-        // NAPRAWA: Wymuszenie odświeżenia widoku edytora i ostrości
-        setTimeout(() => {
-          if (editors[currentTab]) {
-            editors[currentTab].layout();
-            editors[currentTab].focus();
-          }
-        }, 50);
+        showNotification("Utworzono nowy projekt.", "success");
       } catch (e) {
-        showNotification("Błąd wczytywania: " + e.message, "error");
-        console.error("Load project error:", e);
+        showNotification("Błąd: " + e.message, "error");
       }
     },
-    "WCZYTAJ",
+    "UTWÓRZ",
     "btn-primary",
   );
 }
@@ -993,33 +984,38 @@ function loadProject() {
       return;
     }
 
-    // Sort by modified date (newest first)
-    const sortedProjects = [...projects].sort((a, b) => {
-      const dateA = new Date(a.modified || a.created);
-      const dateB = new Date(b.modified || b.created);
-      return dateB - dateA;
-    });
+    // OPTYMALIZACJA: Mapujemy projekty z ich oryginalnym indeksem,
+    // a DOPIERO POTEM sortujemy. Pozbywamy się findIndex() w pętli renderującej.
+    const sortedProjects = projects
+      .map((p, index) => ({ p, originalIndex: index }))
+      .sort((a, b) => {
+        const dateA = new Date(a.p.modified || a.p.created);
+        const dateB = new Date(b.p.modified || b.p.created);
+        return dateB - dateA;
+      });
 
     const listIntro = `<p class="load-archive-hint">Kliknij kartę, aby wczytać projekt do edytorów. <strong>Kosz</strong> — trwałe usunięcie z biblioteki.</p>`;
 
     const listHTML =
       listIntro +
       sortedProjects
-        .map((p, idx) => {
-          const originalIndex = projects.findIndex((proj) => proj.id === p.id);
+        .map(({ p, originalIndex }) => {
           const modified = p.modified || p.created;
           const category = p.category || "Website";
           const sourceIcon = getArchiveSourceIconClass(p);
           const sourceMod = p.fromGithub === true ? "github" : "local";
           const sourceTitle = getArchiveSourceLabel(p);
           const categoryIcon = getProjectCategoryIconClass(category);
+          
           const esc = (s) =>
             String(s)
               .replace(/&/g, "&amp;")
               .replace(/</g, "&lt;")
               .replace(/>/g, "&gt;");
+              
           const nameSafe = esc(p.name);
           const categorySafe = esc(category);
+          
           return `
                 <div class="info-card project-card-clickable archive-card" onclick="loadProjectByIndex(${originalIndex})" onmouseenter="this.querySelector('.delete-btn-container').style.opacity='1'" onmouseleave="this.querySelector('.delete-btn-container').style.opacity='0'">
                     <div class="archive-card-top">
@@ -1089,6 +1085,14 @@ function loadProjectByIndex(index) {
             updatePreview();
             flushAutoSaveNow();
             showNotification(`Wczytano: „${projectToLoad.name}”.`, "success");
+
+            // NAPRAWA: Wymuszenie odświeżenia widoku edytora i ostrości
+            setTimeout(() => {
+              if (editors[currentTab]) {
+                editors[currentTab].layout();
+                editors[currentTab].focus();
+              }
+            }, 50);
           } catch (e) {
             showNotification("Błąd wczytywania: " + e.message, "error");
             console.error("Load project error:", e);
