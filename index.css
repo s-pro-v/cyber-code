@@ -409,6 +409,7 @@ i {
     height: 30px;
     width: 30px;
     font-size: 0.8rem;
+
 }
 
 .control-deck {
@@ -854,7 +855,7 @@ html {
 }
 
 .modal-body {
-    padding: 10px;
+    padding: 0.125rem;
     flex: 1 1 0%;
     min-height: 0;
     overflow-y: auto;
@@ -868,6 +869,8 @@ html {
     background-color: var(--panel-bg);
     background-size: 10px 10px;
     background-image: linear-gradient(var(--pattern-color) 1px, transparent 1px), linear-gradient(90deg, var(--pattern-color) 1px, transparent 1px);
+    box-shadow: var(--shadow-inset);
+    margin: 0.25rem;
 }
 
 .modal-body:has(.modal-body-actions) {
@@ -1317,18 +1320,20 @@ html {
 .load-archive-modal .modal-body {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 9px;
+    gap: 0.125rem;
     align-content: start;
 }
 
 .load-archive-modal .load-archive-hint {
     grid-column: 1 / -1;
-    margin: 0 0 28px;
-    padding: 0 2px 8px;
+
+    padding: 0.5rem;
     font-size: 0.82rem;
     line-height: 1.45;
     color: var(--text-muted);
     border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-drop);
+    background: var(--bg-tertiary);
 }
 
 .load-archive-modal .project-card-clickable {
@@ -1344,6 +1349,9 @@ html {
     opacity: 0;
     transition: opacity 0.2s ease;
     line-height: 0;
+    box-shadow: var(--shadow-inset);
+    overflow: hidden;
+    padding: 0.125rem;
 }
 
 /* Karta archiwum: układ — meta u góry (ikona + kategoria/czas), stopka z nazwą i datą */
@@ -1670,7 +1678,7 @@ html {
 .load-archive-modal {
     width: 750px;
     max-width: 95%;
-    max-height: 90vh;
+    max-height: 83.5vh;
     min-height: 440px;
 }
 
