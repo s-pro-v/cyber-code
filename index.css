@@ -2251,9 +2251,9 @@ html {
 .settings-github-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 4px;
+    gap: 0.125rem;
     margin-top: 0.75rem;
-    padding: 4px;
+    padding: 0.125rem;
     border-top: 1px solid var(--border-color);
     align-items: stretch;
     justify-items: stretch;
@@ -3296,4 +3296,10 @@ html {
 .settings-footer-item span {
     flex: 1;
     font-weight: 500;
+}
+
+.bg {
+    box-shadow: var(--shadow-inset);
+    padding: 0.125rem;
+
 }
