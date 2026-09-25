@@ -726,7 +726,10 @@ let previewTimeout = null;
 
 /**
  * Buduje kompletny, jednolity dokument HTML z zawartości edytorów HTML, CSS i JS.
- * Zapobiega zagnieżdżaniu <!DOCTYPE>, <html> i <body> wewnątrz innego dokumentu.
+ * Zapobiega zagnieżdżaniu <!DOCTYPE>, <html> i <body> wewnątrz innego dokumentu,
+ * bezpiecznie oczyszcza znaczniki <script> w kodzie JS oraz zabezpiecza przed
+ * przedwczesnym zamykaniem tagu <script> przez ciągi znaków "</script>" (co powodowało
+ * wyrzucenie błędu i drukowanie kodu JS jako zwykłego tekstu w oknie preview).
  */
 function buildCompleteHtml(isForPreview = false) {
   const rawHtml = editors.html ? editors.html.getValue() : "";
@@ -735,48 +738,121 @@ function buildCompleteHtml(isForPreview = false) {
 
   const styleBlock = rawCss.trim() ? `<style>\n${rawCss}\n</style>` : "";
 
-  const previewBridge = isForPreview
+  const bridgeBlock = isForPreview
     ? `
-    try {
-        var _p = window.parent;
-        if (_p && _p !== window) {
-            _p.showAlertModal = _p.showAlertModal || alert;
-        }
-    } catch(e) {}
-  `
+<script>
+try {
+    var _p = window.parent;
+    if (_p && _p !== window) {
+        _p.showAlertModal = _p.showAlertModal || alert;
+    }
+} catch(e) {}
+window.onerror = function(msg, url, line, col, error) {
+    console.error("Preview Script Error: " + msg + (line ? " (line " + line + ")" : ""));
+};
+window.addEventListener("unhandledrejection", function(event) {
+    console.error("Preview Unhandled Rejection:", event.reason);
+});
+<\/script>`
     : "";
 
-  const scriptBlock =
-    previewBridge || rawJs.trim()
-      ? `
-<script>
-${previewBridge}
+  let processedJs = (rawJs || "").trim();
+  const externalScripts = [];
+
+  if (processedJs) {
+    // Wyodrębnij zewnętrzne znaczniki <script src="...">, jeśli użytkownik wkleił je do edytora JS
+    processedJs = processedJs.replace(
+      /<script\s+[^>]*src=[\x27\x22]([^\x27\x22]+)[\x27\x22][^>]*>(?:\s*<\/script>)?/gi,
+      (match, src) => {
+        externalScripts.push(`<script src="${src}"><\/script>`);
+        return "";
+      }
+    );
+
+    // Jeśli cały kod JS został opakowany w <script> ... </script>, usuń zewnętrzne tagi
+    const startsWithScript = /^<script(?:\s+[^>]*)?>/i.test(processedJs);
+    const endsWithScript = /<\/script>$/i.test(processedJs);
+    if (startsWithScript && endsWithScript) {
+      processedJs = processedJs
+        .replace(/^<script(?:\s+[^>]*)?>/i, "")
+        .replace(/<\/script>$/i, "")
+        .trim();
+    } else {
+      // Usuń ewentualne samotne znaczniki <script> lub </script> na początku/końcu linii
+      processedJs = processedJs
+        .replace(/^\s*<script(?:\s+[^>]*)?>\s*$/gmi, "")
+        .replace(/^\s*<\/script>\s*$/gmi, "");
+    }
+
+    // Bezpieczne escapowanie wystąpień "</script" w stringach/szablonach JS.
+    // Zapobiega zamknięciu tagu <script> przez tokenizer HTML przeglądarki.
+    processedJs = processedJs.replace(/<\/script/gi, "<\\/script");
+  }
+
+  const extScriptsHtml = externalScripts.length ? externalScripts.join("\n") + "\n" : "";
+  const inlineScriptHtml = processedJs.trim()
+    ? `<script>
 try {
-${rawJs}
+${processedJs}
 } catch(e) {
     console.error("JavaScript Error:", e);
 }
 <\/script>`
-      : "";
+    : "";
+
+  const scriptBlock = (extScriptsHtml + inlineScriptHtml).trim();
 
   const isFullDoc = /<!DOCTYPE\s+html|<html[\s>]/i.test(rawHtml);
 
   if (isFullDoc) {
     let result = rawHtml;
 
-    if (styleBlock) {
-      if (/<head[\s>]/i.test(result)) {
-        result = result.replace(/<head(\s*[^>]*)>/i, `<head$1>\n${styleBlock}`);
+    // Funkcja pomocnicza znajdująca zamykający tag HTML pomijając <script>, <style> i komentarze
+    // (zapobiega dopasowaniu znaczników takich jak </head> czy </body> występujących w stringach JS)
+    const findClosingTagOutsideBlocks = (htmlStr, tagName) => {
+      const tokenRegex = new RegExp(
+        `<!--[\\s\\S]*?-->|<script(?:\\s+[^>]*)?>[\\s\\S]*?<\\/script>|<style(?:\\s+[^>]*)?>[\\s\\S]*?<\\/style>|<\\/${tagName}\\s*>`,
+        "gi"
+      );
+      let match;
+      let lastRealIndex = -1;
+      while ((match = tokenRegex.exec(htmlStr)) !== null) {
+        if (match[0].toLowerCase().startsWith(`</${tagName.toLowerCase()}`)) {
+          lastRealIndex = match.index;
+        }
+      }
+      return lastRealIndex;
+    };
+
+    // Wstrzyknięcie mostka preview i stylów do sekcji <head>
+    const headInjection = (bridgeBlock ? bridgeBlock + "\n" : "") + (styleBlock ? styleBlock + "\n" : "");
+    if (headInjection) {
+      const headCloseIdx = findClosingTagOutsideBlocks(result, "head");
+      if (headCloseIdx !== -1) {
+        result = result.slice(0, headCloseIdx) + headInjection + result.slice(headCloseIdx);
       } else {
-        result = styleBlock + "\n" + result;
+        const headOpenMatch = result.match(/<head(?:\s+[^>]*)?>/i);
+        if (headOpenMatch) {
+          const insertPos = result.indexOf(headOpenMatch[0]) + headOpenMatch[0].length;
+          result = result.slice(0, insertPos) + "\n" + headInjection + result.slice(insertPos);
+        } else {
+          result = headInjection + result;
+        }
       }
     }
 
+    // Wstrzyknięcie skryptów przed właściwy zamykający </body> (lub </html>)
     if (scriptBlock) {
-      if (/<\/body>/i.test(result)) {
-        result = result.replace(/<\/body>/i, `${scriptBlock}\n</body>`);
+      const lastBodyIdx = findClosingTagOutsideBlocks(result, "body");
+      if (lastBodyIdx !== -1) {
+        result = result.slice(0, lastBodyIdx) + scriptBlock + "\n" + result.slice(lastBodyIdx);
       } else {
-        result = result + "\n" + scriptBlock;
+        const lastHtmlIdx = findClosingTagOutsideBlocks(result, "html");
+        if (lastHtmlIdx !== -1) {
+          result = result.slice(0, lastHtmlIdx) + scriptBlock + "\n" + result.slice(lastHtmlIdx);
+        } else {
+          result = result + "\n" + scriptBlock;
+        }
       }
     }
 
@@ -788,6 +864,7 @@ ${rawJs}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    ${bridgeBlock}
     ${styleBlock}
 </head>
 <body>
@@ -2871,5 +2948,8 @@ function showCustomModal(title, content, onOpen, sizeClass) {
 
 function openInNewWindow() {
   const w = window.open();
-  w.document.write(elements.previewIframe.srcdoc);
+  if (w) {
+    w.document.write(elements.previewIframe.srcdoc || buildCompleteHtml(false));
+    w.document.close();
+  }
 }
