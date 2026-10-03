@@ -7,7 +7,7 @@
     <title>Cyber Command Center | Code Editor</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" href="favicon.svg">
-
+    <link rel="icon" type="image/png" href="assets/images/favicon.png?v=1">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -62,10 +62,12 @@
     <div id="settings-sidebar" class="settings-sidebar">
         <div class="settings-sidebar-header">
             <span class="settings-sidebar-title">EDITOR CONFIG</span>
-            <button type="button" class="btn-icon close-settings" onclick="closeSettingsSidebar()"
-                aria-label="Close settings">
-                <i class="fas fa-times"></i>
-            </button>
+            <div class="btn-bg">
+                <button type="button" class="btn-icon close-settings" onclick="closeSettingsSidebar()"
+                    aria-label="Close settings">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
         <div class="settings-sidebar-body" id="settings-sidebar-body">
             <!-- Dynamic Content -->
@@ -121,10 +123,12 @@
     <div id="snippets-sidebar" class="snippets-sidebar">
         <div class="snippets-sidebar-header">
             <span class="snippets-sidebar-title">INJECT FRAGMENT</span>
-            <button class="btn-icon" onclick="closeSnippetsSidebar()"
-                style="background:none; border:none; color:inherit; cursor:pointer;">
-                <i class="fas fa-times"></i>
-            </button>
+            <div class="btn-bg">
+                <button type="button" class="btn-icon close-snippets" onclick="closeSnippetsSidebar()"
+                    aria-label="Close snippets">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
         <div class="snippets-sidebar-body" id="snippets-sidebar-body">
             <!-- Dynamic Content -->
