@@ -792,13 +792,15 @@
                         const preview = summary.length > 150 ? summary.substring(0, 150) + '…' : summary;
                         return (
                             groupHdr +
-                            `<div class="snippet-item snippet-item--set" role="button" tabindex="0" onclick="insertSnippetSet(${zi})">` +
+                            '<div class="btn-bg snippet-btn-bg" role="button" tabindex="0" onclick="insertSnippetSet(' + zi + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();insertSnippetSet(' + zi + ');}">' +
+                            '<div class="snippet-item snippet-item--set">' +
                             '<div class="snippet-name">' +
                             '<i class="fas fa-layer-group setting-icon" aria-hidden="true"></i>' +
                             `<span>${escHtml(z.name)}</span>` +
                             '</div>' +
                             `<div class="snippet-code snippet-code--set-meta">${escHtml(preview)}</div>` +
                             `<div class="snippet-set-tabs">${escHtml(setPartsSummary(z.parts))}</div>` +
+                            '</div>' +
                             '</div>'
                         );
                     })
@@ -807,9 +809,11 @@
 
         const listHTML =
             '<div class="snippets-header-info">' +
+            '<div class="btn-bg snippets-badge-bg">' +
             '<div class="snippets-tab-badge">' +
             `<i class="${tabIcon}"></i>` +
             `<span>${tabName} SNIPPETS</span>` +
+            '</div>' +
             '</div>' +
             `<div class="snippets-count">${sets.length ? sets.length + ' zestawów · ' : ''}${items.length} snippetów</div>` +
             '</div>' +
@@ -825,12 +829,14 @@
                     const preview = s.code.length > 150 ? s.code.substring(0, 150) + '...' : s.code;
                     return (
                         header +
-                        `<div class="snippet-item" onclick="insertSnippetCode(${idx})">` +
+                        '<div class="btn-bg snippet-btn-bg" role="button" tabindex="0" onclick="insertSnippetCode(' + idx + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();insertSnippetCode(' + idx + ');}">' +
+                        '<div class="snippet-item">' +
                         '<div class="snippet-name">' +
                         '<i class="fas fa-terminal setting-icon" aria-hidden="true"></i>' +
                         `<span>${escHtml(s.name)}</span>` +
                         '</div>' +
                         `<div class="snippet-code">${escHtml(preview)}</div>` +
+                        '</div>' +
                         '</div>'
                     );
                 })

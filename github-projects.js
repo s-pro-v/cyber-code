@@ -41,7 +41,9 @@
             branch: 'main',
             token: '',
             /** Hasło do XOR + Base64 z auth.json (opcjonalnie zapisywane lokalnie). */
-            xorKey: ''
+            xorKey: '',
+            /** Czy usuwać projekt ze zdalnego pliku na GitHub przy usuwaniu z aplikacji. */
+            syncDelete: true
         };
     }
 
@@ -230,6 +232,19 @@
             throw new Error('Uzupełnij owner i repo w ustawieniach GitHub (Zapisz konfigurację).');
         }
         return { ...c, owner, repo, path, branch };
+    }
+
+    function isConfigured() {
+        try {
+            const c = loadConfig();
+            return Boolean(
+                String(c.owner || '').trim() &&
+                String(c.repo || '').trim() &&
+                String(c.token || '').trim()
+            );
+        } catch (_) {
+            return false;
+        }
     }
 
     /**
@@ -566,11 +581,103 @@
         throw new Error('Brak niepustej wartości dla kluczy: ' + order.join(', '));
     }
 
+    /**
+     * Sprawdza, czy zdalny projekt odpowiada usuwanemu obiektowi (po id lub nazwie).
+     */
+    function matchesProjectTarget(p, target) {
+        if (!target || !p) return false;
+        if (target.id != null && p.id != null && String(target.id) === String(p.id)) {
+            return true;
+        }
+        const targetName = String(target.name || '').trim().toLowerCase();
+        const pName = String(p.name || '').trim().toLowerCase();
+        if (targetName && pName && targetName === pName) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Usuwa projekt ze zdalnego pliku JSON w repozytorium GitHub na podstawie id lub nazwy.
+     * @param {{ id?: number|string, name?: string }} projectTarget
+     * @param {{ message?: string }} [options]
+     * @returns {Promise<{ ok: boolean, removed: boolean, removedCount: number, count: number, name: string, message?: string, result?: object }>}
+     */
+    async function deleteRemoteProject(projectTarget, options) {
+        if (!projectTarget || (!projectTarget.id && !projectTarget.name)) {
+            throw new Error('Brak identyfikatora lub nazwy projektu do usunięcia.');
+        }
+
+        const { payload } = await fetchRemotePayload();
+        if (!payload) {
+            return {
+                ok: true,
+                removed: false,
+                removedCount: 0,
+                count: 0,
+                name: projectTarget.name || '',
+                message: 'Plik w repozytorium GitHub nie istnieje.'
+            };
+        }
+
+        let rawList = [];
+        try {
+            rawList = extractProjectsArray(payload);
+        } catch (_) {
+            rawList = [];
+        }
+
+        if (!rawList.length) {
+            return {
+                ok: true,
+                removed: false,
+                removedCount: 0,
+                count: 0,
+                name: projectTarget.name || '',
+                message: 'Plik w repozytorium GitHub nie zawiera projektów.'
+            };
+        }
+
+        const remaining = rawList.filter(function (p) {
+            return !matchesProjectTarget(p, projectTarget);
+        });
+
+        if (remaining.length === rawList.length) {
+            return {
+                ok: true,
+                removed: false,
+                removedCount: 0,
+                count: rawList.length,
+                name: projectTarget.name || '',
+                message: 'Projekt nie został odnaleziony w pliku na GitHub.'
+            };
+        }
+
+        const removedCount = rawList.length - remaining.length;
+        const newPayload = buildExportPayload(remaining);
+        const nameLabel = projectTarget.name || 'projekt';
+        const commitMessage =
+            (options && options.message) ||
+            `Cyber Code: usunięto projekt "${nameLabel}" (${new Date().toISOString()})`;
+
+        const result = await uploadPayload(newPayload, commitMessage);
+
+        return {
+            ok: true,
+            removed: true,
+            removedCount,
+            count: remaining.length,
+            name: nameLabel,
+            result
+        };
+    }
+
     global.CyberGitHubProjects = {
         CONFIG_KEY,
         AUTH_JSON_URL,
         loadConfig,
         setConfig: saveConfig,
+        isConfigured,
         fetchRemotePayload,
         fetchProjects,
         fetchPatFromAuthJson,
@@ -580,6 +687,7 @@
         uploadPayload,
         pull,
         push,
+        deleteRemoteProject,
         normalizeProjectsArray,
         buildExportPayload
     };

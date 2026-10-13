@@ -57,6 +57,23 @@
         </div>
     </div>
 
+    <!-- Tab Context Menu -->
+    <div id="tab-context-menu" class="tab-context-menu" style="display: none;">
+        <button type="button" class="tab-context-item" id="tab-ctx-format">
+            <i class="fas fa-align-left"></i>
+            <span>Formatuj kod</span>
+        </button>
+        <button type="button" class="tab-context-item" id="tab-ctx-clear-one">
+            <i class="fas fa-eraser"></i>
+            <span>Wyczyść ten bufor</span>
+        </button>
+        <div class="tab-context-divider"></div>
+        <button type="button" class="tab-context-item tab-context-item--danger" id="tab-ctx-clear-all">
+            <i class="fas fa-broom"></i>
+            <span>Wyczyść wszystkie</span>
+        </button>
+    </div>
+
     <!-- Settings Sidebar -->
     <div id="settings-sidebar-overlay" class="settings-sidebar-overlay" onclick="closeSettingsSidebar()"></div>
     <div id="settings-sidebar" class="settings-sidebar">
@@ -183,11 +200,6 @@
                 <div class="data-pane" id="editor-pane">
                     <div class="pane-header pane-header--with-spacer">
                         <div class="pane-header-primary">
-                            <div class="tab-group">
-                                <div class="editor-tab active" data-tab="html"><i class="fab fa-html5"></i> HTML</div>
-                                <div class="editor-tab" data-tab="css"><i class="fab fa-css3-alt"></i> CSS</div>
-                                <div class="editor-tab" data-tab="js"><i class="fab fa-js"></i> JS</div>
-                            </div>
                             <div class="toolbar-group">
                                 <div class="ja-select-wrap" id="syntaxSelectContainer">
                                     <button type="button" class="ja-select-btn" id="syntaxSelectBtn"
@@ -242,17 +254,34 @@
                                     class="fas fa-puzzle-piece"></i></button>
                             <button id="format-btn" class="btn btn-icon" title="Format Code"><i
                                     class="fas fa-align-left"></i></button>
-                            <button id="clear-btn" class="btn btn-icon" title="Clear Code"><i
-                                    class="fas fa-trash-alt"></i></button>
                             <button id="clean-all-btn" class="btn btn-icon btn-danger" title="Clean All Editors"><i
                                     class="fas fa-broom"></i></button>
                         </div>
                     </div>
 
-                    <div class="editor-container">
-                        <div id="html-editor" class="editor-content active"></div>
-                        <div id="css-editor" class="editor-content"></div>
-                        <div id="js-editor" class="editor-content"></div>
+                    <div class="editor-workspace-body">
+                        <div class="tab-group tab-group-vertical">
+                            <div class="editor-tab active" data-tab="html" title="HTML (Prawy klik: menu)">
+                                <i class="fab fa-html5"></i>
+                                <span>HTML</span>
+                            </div>
+                            <div class="editor-tab" data-tab="css" title="CSS (Prawy klik: menu)">
+                                <i class="fab fa-css3-alt"></i>
+                                <span>CSS</span>
+                            </div>
+                            <div class="editor-tab" data-tab="js" title="JS (Prawy klik: menu)">
+                                <i class="fab fa-js"></i>
+                                <span>JS</span>
+                            </div>
+
+                            <div class="bg-panel">
+                            </div>
+                        </div>
+                        <div class="editor-container">
+                            <div id="html-editor" class="editor-content active"></div>
+                            <div id="css-editor" class="editor-content"></div>
+                            <div id="js-editor" class="editor-content"></div>
+                        </div>
                     </div>
                 </div>
 

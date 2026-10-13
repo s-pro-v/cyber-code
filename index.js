@@ -483,11 +483,88 @@ function createEditors() {
 function loadInitialContent() { }
 
 // --- Event Listeners ---
+let contextMenuTab = null;
+
+function hideTabContextMenu() {
+  const menu = document.getElementById("tab-context-menu");
+  if (menu) menu.style.display = "none";
+  contextMenuTab = null;
+}
+
 function setupEventListeners() {
+  const tabContextMenu = document.getElementById("tab-context-menu");
+  const ctxFormatBtn = document.getElementById("tab-ctx-format");
+  const ctxClearOneBtn = document.getElementById("tab-ctx-clear-one");
+  const ctxClearAllBtn = document.getElementById("tab-ctx-clear-all");
+
   document.querySelectorAll(".editor-tab").forEach((tab) => {
     tab.addEventListener("click", (e) =>
       switchTab(e.currentTarget.dataset.tab, e.currentTarget),
     );
+
+    tab.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const targetTab = tab.dataset.tab;
+      contextMenuTab = targetTab;
+
+      // Aktywuj klikniętą prawym przyciskiem zakładkę
+      switchTab(targetTab, tab);
+
+      if (tabContextMenu) {
+        if (ctxClearOneBtn) {
+          const lbl = targetTab.toUpperCase();
+          const span = ctxClearOneBtn.querySelector("span");
+          if (span) span.textContent = `Wyczyść bufor ${lbl}`;
+        }
+        tabContextMenu.style.display = "flex";
+
+        const menuWidth = 200;
+        const menuHeight = 120;
+        let left = e.clientX;
+        let top = e.clientY;
+
+        if (left + menuWidth > window.innerWidth) {
+          left = window.innerWidth - menuWidth - 8;
+        }
+        if (top + menuHeight > window.innerHeight) {
+          top = window.innerHeight - menuHeight - 8;
+        }
+
+        tabContextMenu.style.left = `${Math.max(8, left)}px`;
+        tabContextMenu.style.top = `${Math.max(8, top)}px`;
+      }
+    });
+  });
+
+  if (ctxFormatBtn) {
+    ctxFormatBtn.addEventListener("click", () => {
+      const tabToFormat = contextMenuTab || currentTab;
+      hideTabContextMenu();
+      formatCode(tabToFormat);
+    });
+  }
+
+  if (ctxClearOneBtn) {
+    ctxClearOneBtn.addEventListener("click", () => {
+      const tabToClear = contextMenuTab || currentTab;
+      hideTabContextMenu();
+      clearSingleTab(tabToClear);
+    });
+  }
+
+  if (ctxClearAllBtn) {
+    ctxClearAllBtn.addEventListener("click", () => {
+      hideTabContextMenu();
+      cleanAll();
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (tabContextMenu && !tabContextMenu.contains(e.target)) {
+      hideTabContextMenu();
+    }
   });
 
   document.getElementById("new-btn").addEventListener("click", newProject);
@@ -509,7 +586,6 @@ function setupEventListeners() {
 
   document.getElementById("run-btn").addEventListener("click", runCode);
   document.getElementById("format-btn").addEventListener("click", formatCode);
-  document.getElementById("clear-btn").addEventListener("click", clearCode);
   document.getElementById("clean-all-btn").addEventListener("click", cleanAll);
   document
     .getElementById("snippet-btn")
@@ -576,6 +652,16 @@ function setupEventListeners() {
     if (e.key === "F5") {
       e.preventDefault();
       refreshPreview();
+    }
+
+    if (
+      e.key === "Escape" &&
+      document.getElementById("tab-context-menu") &&
+      document.getElementById("tab-context-menu").style.display !== "none"
+    ) {
+      e.preventDefault();
+      hideTabContextMenu();
+      return;
     }
 
     if (
@@ -706,15 +792,30 @@ function initSyntaxSelect() {
 
 function switchTab(tab, tabElement) {
   currentTab = tab;
-  document
-    .querySelectorAll(".editor-tab")
-    .forEach((t) => t.classList.remove("active"));
-  tabElement.classList.add("active");
+  document.querySelectorAll(".editor-tab").forEach((t) => {
+    t.classList.remove("active");
+    if (t.parentElement && t.parentElement.classList.contains("btn-bg")) {
+      t.parentElement.classList.remove("active");
+    }
+  });
+
+  if (tabElement) {
+    tabElement.classList.add("active");
+    if (
+      tabElement.parentElement &&
+      tabElement.parentElement.classList.contains("btn-bg")
+    ) {
+      tabElement.parentElement.classList.add("active");
+    }
+  }
 
   document
     .querySelectorAll(".editor-content")
     .forEach((c) => c.classList.remove("active"));
-  document.getElementById(tab + "-editor").classList.add("active");
+  const targetEditorEl = document.getElementById(tab + "-editor");
+  if (targetEditorEl) {
+    targetEditorEl.classList.add("active");
+  }
 
   if (editors[tab]) editors[tab].layout();
 
@@ -766,7 +867,7 @@ window.addEventListener("unhandledrejection", function(event) {
       (match, src) => {
         externalScripts.push(`<script src="${src}"><\/script>`);
         return "";
-      }
+      },
     );
 
     // Jeśli cały kod JS został opakowany w <script> ... </script>, usuń zewnętrzne tagi
@@ -780,8 +881,8 @@ window.addEventListener("unhandledrejection", function(event) {
     } else {
       // Usuń ewentualne samotne znaczniki <script> lub </script> na początku/końcu linii
       processedJs = processedJs
-        .replace(/^\s*<script(?:\s+[^>]*)?>\s*$/gmi, "")
-        .replace(/^\s*<\/script>\s*$/gmi, "");
+        .replace(/^\s*<script(?:\s+[^>]*)?>\s*$/gim, "")
+        .replace(/^\s*<\/script>\s*$/gim, "");
     }
 
     // Bezpieczne escapowanie wystąpień "</script" w stringach/szablonach JS.
@@ -789,7 +890,9 @@ window.addEventListener("unhandledrejection", function(event) {
     processedJs = processedJs.replace(/<\/script/gi, "<\\/script");
   }
 
-  const extScriptsHtml = externalScripts.length ? externalScripts.join("\n") + "\n" : "";
+  const extScriptsHtml = externalScripts.length
+    ? externalScripts.join("\n") + "\n"
+    : "";
   const inlineScriptHtml = processedJs.trim()
     ? `<script>
 try {
@@ -812,7 +915,7 @@ ${processedJs}
     const findClosingTagOutsideBlocks = (htmlStr, tagName) => {
       const tokenRegex = new RegExp(
         `<!--[\\s\\S]*?-->|<script(?:\\s+[^>]*)?>[\\s\\S]*?<\\/script>|<style(?:\\s+[^>]*)?>[\\s\\S]*?<\\/style>|<\\/${tagName}\\s*>`,
-        "gi"
+        "gi",
       );
       let match;
       let lastRealIndex = -1;
@@ -825,16 +928,26 @@ ${processedJs}
     };
 
     // Wstrzyknięcie mostka preview i stylów do sekcji <head>
-    const headInjection = (bridgeBlock ? bridgeBlock + "\n" : "") + (styleBlock ? styleBlock + "\n" : "");
+    const headInjection =
+      (bridgeBlock ? bridgeBlock + "\n" : "") +
+      (styleBlock ? styleBlock + "\n" : "");
     if (headInjection) {
       const headCloseIdx = findClosingTagOutsideBlocks(result, "head");
       if (headCloseIdx !== -1) {
-        result = result.slice(0, headCloseIdx) + headInjection + result.slice(headCloseIdx);
+        result =
+          result.slice(0, headCloseIdx) +
+          headInjection +
+          result.slice(headCloseIdx);
       } else {
         const headOpenMatch = result.match(/<head(?:\s+[^>]*)?>/i);
         if (headOpenMatch) {
-          const insertPos = result.indexOf(headOpenMatch[0]) + headOpenMatch[0].length;
-          result = result.slice(0, insertPos) + "\n" + headInjection + result.slice(insertPos);
+          const insertPos =
+            result.indexOf(headOpenMatch[0]) + headOpenMatch[0].length;
+          result =
+            result.slice(0, insertPos) +
+            "\n" +
+            headInjection +
+            result.slice(insertPos);
         } else {
           result = headInjection + result;
         }
@@ -845,11 +958,19 @@ ${processedJs}
     if (scriptBlock) {
       const lastBodyIdx = findClosingTagOutsideBlocks(result, "body");
       if (lastBodyIdx !== -1) {
-        result = result.slice(0, lastBodyIdx) + scriptBlock + "\n" + result.slice(lastBodyIdx);
+        result =
+          result.slice(0, lastBodyIdx) +
+          scriptBlock +
+          "\n" +
+          result.slice(lastBodyIdx);
       } else {
         const lastHtmlIdx = findClosingTagOutsideBlocks(result, "html");
         if (lastHtmlIdx !== -1) {
-          result = result.slice(0, lastHtmlIdx) + scriptBlock + "\n" + result.slice(lastHtmlIdx);
+          result =
+            result.slice(0, lastHtmlIdx) +
+            scriptBlock +
+            "\n" +
+            result.slice(lastHtmlIdx);
         } else {
           result = result + "\n" + scriptBlock;
         }
@@ -1099,6 +1220,7 @@ function loadProject() {
   try {
     const projects = JSON.parse(localStorage.getItem("savedProjects") || "[]");
     if (projects.length === 0) {
+      closeModal();
       showNotification("Brak zapisanych projektów.", "info");
       return;
     }
@@ -1216,20 +1338,97 @@ function loadProjectByIndex(index) {
 }
 
 function deleteProject(index) {
+  let projectToDelete = null;
+  try {
+    const projects = JSON.parse(
+      localStorage.getItem("savedProjects") || "[]",
+    );
+    if (index >= 0 && index < projects.length) {
+      projectToDelete = projects[index];
+    }
+  } catch (e) {
+    console.error("Delete lookup error:", e);
+  }
+
+  if (!projectToDelete) {
+    showNotification("Nie znaleziono projektu do usunięcia.", "error");
+    return;
+  }
+
+  const projectName = projectToDelete.name;
+  const isGhConfigured =
+    typeof CyberGitHubProjects !== "undefined" &&
+    typeof CyberGitHubProjects.isConfigured === "function" &&
+    CyberGitHubProjects.isConfigured() &&
+    CyberGitHubProjects.loadConfig().syncDelete !== false;
+
+  const esc = (s) =>
+    String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const confirmMsg = isGhConfigured
+    ? `Usunąć wpis <strong style="color:var(--highlight)">„${esc(projectName)}”</strong> z biblioteki lokalnej <strong>oraz z pliku w repozytorium GitHub</strong>?<br><br>Tej operacji nie cofniesz.`
+    : `Usunąć wpis <strong style="color:var(--highlight)">„${esc(projectName)}”</strong> z biblioteki lokalnej? Tej operacji nie cofniesz w aplikacji.`;
+
   showConfirmModal(
     "Usuń projekt",
-    "Usunąć ten wpis z biblioteki lokalnej? Tej operacji nie cofniesz w aplikacji.",
-    () => {
+    confirmMsg,
+    async () => {
       try {
         const projects = JSON.parse(
           localStorage.getItem("savedProjects") || "[]",
         );
-        if (index >= 0 && index < projects.length) {
-          const projectName = projects[index].name;
-          projects.splice(index, 1);
+        const foundIdx = projects.findIndex(
+          (p) =>
+            (projectToDelete.id != null && p.id === projectToDelete.id) ||
+            (p.name && p.name === projectName),
+        );
+        const idxToRemove = foundIdx !== -1 ? foundIdx : index;
+
+        if (idxToRemove >= 0 && idxToRemove < projects.length) {
+          projects.splice(idxToRemove, 1);
           localStorage.setItem("savedProjects", JSON.stringify(projects));
-          showNotification(`Usunięto: „${projectName}”.`, "success");
           loadProject();
+        }
+
+        if (isGhConfigured) {
+          showNotification(
+            `Usunięto „${projectName}” lokalnie. Usuwanie z GitHub…`,
+            "info",
+          );
+          if (typeof setGithubPanelStatus === "function") {
+            setGithubPanelStatus(`Usuwanie „${projectName}” z GitHub…`);
+          }
+          try {
+            const res =
+              await CyberGitHubProjects.deleteRemoteProject(projectToDelete);
+            if (res.removed) {
+              const successText = `Usunięto „${projectName}” z biblioteki i z GitHub (${res.count} pozostało).`;
+              showNotification(successText, "success");
+              if (typeof setGithubPanelStatus === "function") {
+                setGithubPanelStatus(successText);
+              }
+            } else {
+              const infoText =
+                res.message ||
+                `Usunięto „${projectName}” lokalnie (brak wpisu w repozytorium GitHub).`;
+              showNotification(infoText, "info");
+              if (typeof setGithubPanelStatus === "function") {
+                setGithubPanelStatus(infoText);
+              }
+            }
+          } catch (ghErr) {
+            const errText = `Usunięto lokalnie, ale błąd GitHub: ${ghErr.message}`;
+            showNotification(errText, "warning");
+            if (typeof setGithubPanelStatus === "function") {
+              setGithubPanelStatus(errText);
+            }
+            console.error("GitHub delete error:", ghErr);
+          }
+        } else {
+          showNotification(`Usunięto: „${projectName}”.`, "success");
         }
       } catch (e) {
         showNotification("Błąd usuwania: " + e.message, "error");
@@ -1426,21 +1625,23 @@ function onImportProjectsFileSelected(ev) {
 }
 
 // --- Editor Features ---
-async function formatCode() {
-  await editors[currentTab].getAction("editor.action.formatDocument").run();
-  showNotification("Syntax formatted.", "success");
+async function formatCode(targetTab = currentTab) {
+  if (!editors[targetTab]) return;
+  await editors[targetTab].getAction("editor.action.formatDocument").run();
+  showNotification(`Syntax formatted (${targetTab.toUpperCase()}).`, "success");
 }
 
-function clearCode() {
-  const tabLabel =
-    currentTab === "html" ? "HTML" : currentTab === "css" ? "CSS" : "JS";
+function clearSingleTab(tab = currentTab) {
+  const tabLabel = tab === "html" ? "HTML" : tab === "css" ? "CSS" : "JS";
   showConfirmModal(
-    "Wyczyść bufor",
-    `Wyczyścić tylko edytor <strong>${tabLabel}</strong>? Podgląd zostanie przeliczony.`,
+    `Wyczyść bufor ${tabLabel}`,
+    `Wyczyścić tylko edytor <strong>${tabLabel}</strong>?<br><br>Niezapisana treść w tym buforze zostanie utracona.`,
     () => {
-      editors[currentTab].setValue("");
-      updatePreview();
-      showNotification(`Wyczyszczono ${tabLabel}.`, "info");
+      if (editors[tab]) {
+        editors[tab].setValue("");
+        updatePreview();
+        showNotification(`Wyczyszczono bufor ${tabLabel}.`, "info");
+      }
     },
     "WYCZYŚĆ",
     "btn-danger",
@@ -1586,12 +1787,16 @@ function loadSettings() {
 function closeAllJaSelectLists() {
   document.querySelectorAll(".ja-select-list.ja-visible").forEach((list) => {
     list.classList.remove("ja-visible");
-    const btn = list.previousElementSibling;
-    if (btn && btn.classList.contains("ja-select-btn")) {
+    const wrap = list.closest(".ja-select-wrap");
+    const btn = wrap
+      ? wrap.querySelector(".ja-select-btn")
+      : list.previousElementSibling;
+    const bg = wrap ? wrap.querySelector(".btn-bg") : null;
+    if (btn && btn.classList && btn.classList.contains("ja-select-btn")) {
       btn.classList.remove("ja-open");
       btn.setAttribute("aria-expanded", "false");
     }
-    const wrap = list.closest(".ja-select-wrap");
+    if (bg) bg.classList.remove("active");
     if (wrap) wrap.classList.remove("ja-select-open");
   });
 }
@@ -1619,6 +1824,9 @@ function initSettingJaSelects(root) {
       const wrap = document.createElement("div");
       wrap.className = "ja-select-wrap";
 
+      const btnBg = document.createElement("div");
+      btnBg.className = "btn-bg";
+
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "ja-select-btn";
@@ -1635,6 +1843,7 @@ function initSettingJaSelects(root) {
 
       btn.appendChild(labelSpan);
       btn.appendChild(arrow);
+      btnBg.appendChild(btn);
 
       const list = document.createElement("div");
       list.className = "ja-select-list";
@@ -1709,7 +1918,7 @@ function initSettingJaSelects(root) {
       sel.setAttribute("tabindex", "-1");
 
       sel.parentNode.insertBefore(wrap, sel);
-      wrap.appendChild(btn);
+      wrap.appendChild(btnBg);
       wrap.appendChild(list);
       wrap.appendChild(sel);
 
@@ -1717,6 +1926,7 @@ function initSettingJaSelects(root) {
 
       function closeList() {
         btn.classList.remove("ja-open");
+        btnBg.classList.remove("active");
         list.classList.remove("ja-visible");
         btn.setAttribute("aria-expanded", "false");
         wrap.classList.remove("ja-select-open");
@@ -1726,16 +1936,19 @@ function initSettingJaSelects(root) {
         document.querySelectorAll(".ja-select-list.ja-visible").forEach((l) => {
           if (l !== list) {
             l.classList.remove("ja-visible");
-            const b = l.previousElementSibling;
-            if (b && b.classList.contains("ja-select-btn")) {
+            const w = l.closest(".ja-select-wrap");
+            const b = w ? w.querySelector(".ja-select-btn") : null;
+            const bg = w ? w.querySelector(".btn-bg") : null;
+            if (b) {
               b.classList.remove("ja-open");
               b.setAttribute("aria-expanded", "false");
             }
-            const w = l.closest(".ja-select-wrap");
+            if (bg) bg.classList.remove("active");
             if (w) w.classList.remove("ja-select-open");
           }
         });
         btn.classList.add("ja-open");
+        btnBg.classList.add("active");
         list.classList.add("ja-visible");
         btn.setAttribute("aria-expanded", "true");
         wrap.classList.add("ja-select-open");
@@ -1767,24 +1980,38 @@ function showSettings() {
       .replace(/</g, "&lt;");
 
   const html = `
-        <div class="settings-tabs">
-            <div class="settings-tab active" onclick="switchSettingsTab('general')">
-                <i class="fas fa-cog"></i> GENERAL
-            </div>
-            <div class="settings-tab" onclick="switchSettingsTab('cursor')">
-                <i class="fas fa-mouse-pointer"></i> CURSOR
-            </div>
-            <div class="settings-tab" onclick="switchSettingsTab('formatting')">
-                <i class="fas fa-code"></i> FORMATTING
-            </div>
-            <div class="settings-tab" onclick="switchSettingsTab('display')">
-                <i class="fas fa-eye"></i> DISPLAY
-            </div>
-            <div class="settings-tab" onclick="switchSettingsTab('advanced')">
-                <i class="fas fa-sliders-h"></i> ADVANCED
-            </div>
-            <div class="settings-tab" onclick="switchSettingsTab('github')">
-                <i class="fab fa-github"></i> GITHUB
+        <div class="settings-tabs-chassis">
+            <div class="settings-tabs" role="tablist">
+                <div class="btn-bg active">
+                    <button type="button" class="settings-tab active" data-settings-tab="general" onclick="switchSettingsTab('general')">
+                        <i class="fas fa-cog"></i> <span>GENERAL</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" class="settings-tab" data-settings-tab="cursor" onclick="switchSettingsTab('cursor')">
+                        <i class="fas fa-mouse-pointer"></i> <span>CURSOR</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" class="settings-tab" data-settings-tab="formatting" onclick="switchSettingsTab('formatting')">
+                        <i class="fas fa-code"></i> <span>FORMATTING</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" class="settings-tab" data-settings-tab="display" onclick="switchSettingsTab('display')">
+                        <i class="fas fa-eye"></i> <span>DISPLAY</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" class="settings-tab" data-settings-tab="advanced" onclick="switchSettingsTab('advanced')">
+                        <i class="fas fa-sliders-h"></i> <span>ADVANCED</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" class="settings-tab" data-settings-tab="github" onclick="switchSettingsTab('github')">
+                        <i class="fab fa-github"></i> <span>GITHUB</span>
+                    </button>
+                </div>
             </div>
         </div>
         <div id="settings-general" class="settings-tab-content active">
@@ -2050,7 +2277,6 @@ function showSettings() {
                 </select>
             </div>
         </div>
-        <div class="bg">
         <div id="settings-advanced" class="settings-tab-content">
             <div class="setting-item">
                 <label class="setting-label">
@@ -2169,7 +2395,6 @@ function showSettings() {
                 </div>
             </div>
         </div>
-        </div>
         <div id="settings-github" class="settings-tab-content settings-github-panel">
             <p class="settings-github-intro">
                 Synchronizacja archiwum (<code>savedProjects</code>) z plikiem JSON w repozytorium GitHub.
@@ -2231,11 +2456,13 @@ function showSettings() {
                     <input type="password" id="gh-token" class="settings-github-input" autocomplete="off"
                         placeholder="${escAttrGh(gh.token ? "Zapisany — puste = bez zmiany" : "Wymagany do zapisu w repo")}"
                         value="">
-                    <button type="button" class="btn settings-github-fetch-key" onclick="cyberGithubFetchTokenKey()"
-                        title="Pobierz klucz z auth.json (cyber_data)"
-                        aria-label="Pobierz klucz z auth.json">
-                        <i class="fas fa-cloud-download-alt" aria-hidden="true"></i>
-                    </button>
+                    <div class="btn-bg">
+                        <button type="button" class="btn settings-github-fetch-key" onclick="cyberGithubFetchTokenKey()"
+                            title="Pobierz klucz z auth.json (cyber_data)"
+                            aria-label="Pobierz klucz z auth.json">
+                            <i class="fas fa-cloud-download-alt" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="settings-github-auth-field" aria-live="polite">
                     <span class="settings-github-keypick-label">Pole w auth.json</span>
@@ -2245,23 +2472,40 @@ function showSettings() {
                     </div>
                 </div>
             </div>
+            <div class="setting-item setting-github-field">
+                <label class="setting-label settings-github-checkbox-label" for="gh-sync-delete">
+                    <span>
+                        <i class="fas fa-trash-alt setting-icon"></i>
+                        <span>Usuwaj z GitHub przy usuwaniu projektu</span>
+                    </span>
+                    <input type="checkbox" id="gh-sync-delete" class="settings-github-checkbox" ${gh.syncDelete !== false ? "checked" : ""}>
+                </label>
+            </div>
             <div class="settings-github-actions">
-                <button type="button" class="btn btn-primary settings-github-action-btn" onclick="saveGithubPanelConfig()">
-                    <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-save"></i></span>
-                    <span class="settings-github-action-label">Zapisz konfigurację</span>
-                </button>
-                <button type="button" class="btn settings-github-action-btn" onclick="cyberGithubPullMerge()">
-                    <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-download"></i></span>
-                    <span class="settings-github-action-label">Pobierz (scal)</span>
-                </button>
-                <button type="button" class="btn btn-danger settings-github-action-btn" onclick="cyberGithubPullReplace()">
-                    <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-sync"></i></span>
-                    <span class="settings-github-action-label">Pobierz (zastąp)</span>
-                </button>
-                <button type="button" class="btn settings-github-action-btn" onclick="cyberGithubPush()">
-                    <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-upload"></i></span>
-                    <span class="settings-github-action-label">Wyślij tylko nowe do pliku</span>
-                </button>
+                <div class="btn-bg">
+                    <button type="button" class="btn btn-primary settings-github-action-btn" onclick="saveGithubPanelConfig()">
+                        <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-save"></i></span>
+                        <span class="settings-github-action-label">Zapisz konfigurację</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" class="btn settings-github-action-btn" onclick="cyberGithubPullMerge()">
+                        <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-download"></i></span>
+                        <span class="settings-github-action-label">Pobierz (scal)</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" class="btn btn-danger settings-github-action-btn" onclick="cyberGithubPullReplace()">
+                        <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-sync"></i></span>
+                        <span class="settings-github-action-label">Pobierz (zastąp)</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" class="btn settings-github-action-btn" onclick="cyberGithubPush()">
+                        <span class="settings-github-action-icon" aria-hidden="true"><i class="fas fa-upload"></i></span>
+                        <span class="settings-github-action-label">Wyślij tylko nowe do pliku</span>
+                    </button>
+                </div>
             </div>
             <p id="gh-panel-status" class="settings-github-status" role="status" aria-live="polite"></p>
         </div>
@@ -2308,6 +2552,9 @@ function saveGithubPanelConfigExecute() {
   const branch = document.getElementById("gh-branch")?.value?.trim() || "main";
   let token = document.getElementById("gh-token")?.value?.trim() ?? "";
   let xorKey = document.getElementById("gh-xor-key")?.value?.trim() ?? "";
+  const syncDelete = document.getElementById("gh-sync-delete")
+    ? document.getElementById("gh-sync-delete").checked
+    : true;
   const prev = CyberGitHubProjects.loadConfig();
   if (!token) {
     token = prev.token || "";
@@ -2322,6 +2569,7 @@ function saveGithubPanelConfigExecute() {
     branch,
     token,
     xorKey,
+    syncDelete,
   });
   const tokInput = document.getElementById("gh-token");
   if (tokInput) tokInput.value = "";
@@ -2486,12 +2734,16 @@ async function cyberGithubPushRun() {
 
 function switchSettingsTab(tab) {
   closeAllJaSelectLists();
+
   document.querySelectorAll(".settings-tab-content").forEach((content) => {
     content.classList.remove("active");
   });
 
   document.querySelectorAll(".settings-tab").forEach((t) => {
     t.classList.remove("active");
+    if (t.parentElement && t.parentElement.classList.contains("btn-bg")) {
+      t.parentElement.classList.remove("active");
+    }
   });
 
   const content = document.getElementById("settings-" + tab);
@@ -2499,17 +2751,23 @@ function switchSettingsTab(tab) {
     content.classList.add("active");
   }
 
-  const clickedTab = event ? event.target.closest(".settings-tab") : null;
-  if (clickedTab) {
-    clickedTab.classList.add("active");
-  } else {
-    document.querySelectorAll(".settings-tab").forEach((t) => {
-      if (t.textContent.includes(tab.toUpperCase())) {
-        t.classList.add("active");
-      }
-    });
+  const targetTab =
+    document.querySelector(`.settings-tab[data-settings-tab="${tab}"]`) ||
+    Array.from(document.querySelectorAll(".settings-tab")).find((t) =>
+      t.textContent.trim().toUpperCase().includes(String(tab).toUpperCase()),
+    );
+
+  if (targetTab) {
+    targetTab.classList.add("active");
+    if (
+      targetTab.parentElement &&
+      targetTab.parentElement.classList.contains("btn-bg")
+    ) {
+      targetTab.parentElement.classList.add("active");
+    }
   }
 }
+window.switchSettingsTab = switchSettingsTab;
 
 function updateSetting(key, val) {
   if (val === "true" || val === true) {
