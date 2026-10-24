@@ -2121,7 +2121,7 @@ function showSettings() {
         <div id="settings-formatting" class="settings-tab-content">
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-brackets-curly setting-icon"></i>
+                    <i class="fas fa-code setting-icon"></i>
                     <span>Auto Close Brackets</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('autoClosingBrackets', this.value)">
@@ -2200,7 +2200,7 @@ function showSettings() {
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-brackets-curly setting-icon"></i>
+                    <i class="fas fa-code setting-icon"></i>
                     <span>Match Brackets</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('matchBrackets', this.value)">
