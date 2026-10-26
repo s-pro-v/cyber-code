@@ -24,6 +24,8 @@
     <link rel="stylesheet" href="index.css">
     <!-- Industrial HUD: alert / toast (zmienne z index.css) — mostek modali w index.css -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/s-pro-v/Industrial_HUD_Framework@main/css/alert.css">
+
+
 </head>
 
 <body>
@@ -36,23 +38,28 @@
         <div class="modal">
             <div class="modal-header">
                 <span id="modal-title">TITLE</span>
-                <button class="btn-icon" style="background:none; border:none; color:inherit; cursor:pointer;"
-                    onclick="closeModal()">
-                    <i class="fas fa-times"></i>
-                </button>
+                <div class="btn-bg">
+                    <button class="btn-icon close" onclick="closeModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
             <div class="modal-body" id="modal-body">
                 <!-- Dynamic Content -->
             </div>
             <div class="modal-actions" id="modal-actions">
-                <button type="button" id="modal-cancel-btn" class="btn modal-action-btn">
-                    <i class="fas fa-xmark modal-action-btn__icon" aria-hidden="true"></i>
-                    <span class="modal-action-btn__label">ANULUJ</span>
-                </button>
-                <button type="button" id="modal-confirm-btn" class="btn btn-primary modal-action-btn">
-                    <i class="fas fa-check modal-action-btn__icon" id="modal-confirm-icon" aria-hidden="true"></i>
-                    <span class="modal-action-btn__label">ZATWIERDŹ</span>
-                </button>
+                <div class="btn-bg">
+                    <button type="button" id="modal-cancel-btn" class="btn modal-action-btn">
+                        <i class="fas fa-xmark modal-action-btn__icon" aria-hidden="true"></i>
+                        <span class="modal-action-btn__label">ANULUJ</span>
+                    </button>
+                </div>
+                <div class="btn-bg">
+                    <button type="button" id="modal-confirm-btn" class="btn btn-primary modal-action-btn">
+                        <i class="fas fa-check modal-action-btn__icon" id="modal-confirm-icon" aria-hidden="true"></i>
+                        <span class="modal-action-btn__label">ZATWIERDŹ</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -62,6 +69,10 @@
         <button type="button" class="tab-context-item" id="tab-ctx-format">
             <i class="fas fa-align-left"></i>
             <span>Formatuj kod</span>
+        </button>
+        <button type="button" class="tab-context-item" id="tab-ctx-import-one">
+            <i class="fas fa-file-arrow-up"></i>
+            <span>Wczytaj plik do tej zakładki</span>
         </button>
         <button type="button" class="tab-context-item" id="tab-ctx-clear-one">
             <i class="fas fa-eraser"></i>
@@ -176,6 +187,15 @@
                     aria-label="Import projektów z pliku JSON">
                 <button id="import-projects-btn" class="btn" title="Import projektów z pliku JSON"><i
                         class="fas fa-file-import i-import"></i></button>
+                <input type="file" id="import-single-file-input"
+                    accept=".html,.htm,.css,.js,.javascript,text/html,text/css,text/javascript,application/javascript"
+                    hidden aria-label="Wczytaj pojedynczy plik HTML, CSS lub JS">
+                <input type="file" id="import-folder-input" webkitdirectory directory multiple hidden
+                    aria-label="Wczytaj folder z plikami HTML, CSS, JS">
+                <button id="import-single-file-btn" class="btn" title="Wczytaj plik (.html, .css, .js)"><i
+                        class="fas fa-file-code"></i></button>
+                <button id="import-folder-btn" class="btn" title="Wczytaj folder (HTML, CSS, JS)"><i
+                        class="fas fa-folder-plus"></i></button>
                 <div class="separator"></div>
                 <button id="settings-btn" class="btn" title="Settings"><i class="fas fa-cog i-settings"></i></button>
                 <button id="shortcuts-btn" class="btn" title="Shortcuts (F1)"><i
@@ -250,6 +270,8 @@
                         </div>
                         <div class="pane-header-spacer" aria-hidden="true"></div>
                         <div class="pane-toolbar">
+                            <button id="toggle-tree-btn" class="btn btn-icon" title="Drzewo plików projektu"
+                                style="display: none;"><i class="fas fa-sitemap"></i></button>
                             <button id="snippet-btn" class="btn btn-icon" title="Insert Snippet"><i
                                     class="fas fa-puzzle-piece"></i></button>
                             <button id="format-btn" class="btn btn-icon" title="Format Code"><i
@@ -260,6 +282,30 @@
                     </div>
 
                     <div class="editor-workspace-body">
+                        <!-- Project File Tree Explorer Panel -->
+                        <div id="project-tree-panel" class="project-tree-panel" style="display: none;">
+                            <div class="project-tree-header">
+                                <span class="project-tree-title">
+                                    <i class="fas fa-folder-tree"></i>
+                                    <span id="project-tree-root-name">PROJEKT</span>
+                                </span>
+                                <div class="project-tree-actions">
+                                    <button type="button" class="btn-icon project-tree-btn-action"
+                                        id="project-tree-clear-btn"
+                                        title="Wyczyść listę plików (zamknij projekt folderu)">
+                                        <i class="fas fa-broom"></i>
+                                    </button>
+                                    <button type="button" class="btn-icon project-tree-close"
+                                        id="project-tree-close-btn" title="Zwiń panel drzewa">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="project-tree-body" id="project-tree-body">
+                                <!-- Dynamic tree content -->
+                            </div>
+                        </div>
+
                         <div class="tab-group tab-group-vertical">
                             <div class="editor-tab active" data-tab="html" title="HTML (Prawy klik: menu)">
                                 <i class="fab fa-html5"></i>

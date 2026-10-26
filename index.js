@@ -302,6 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadTheme();
   loadSettings();
   loadView();
+  loadProjectTreeFromStorage();
 });
 
 function initializeEditors() {
@@ -315,34 +316,61 @@ function initializeEditors() {
     return;
   }
 
-  require.config({
-    paths: {
-      vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs",
-    },
-  });
-  require(
-    ["vs/editor/editor.main"],
-    () => {
-      console.log("Monaco Editor loaded successfully");
-
-      // Define custom themes immediately after Monaco loads
-      if (window.defineMonacoThemes) {
-        window.defineMonacoThemes();
+  // Helper: wait until AMD require is available (vs/loader.js may still be downloading)
+  const waitForRequire = (callback, maxWaitMs = 12000, intervalMs = 50) => {
+    const startTime = Date.now();
+    const check = () => {
+      if (typeof window.require === "function" && typeof window.require.config === "function") {
+        callback(null, window.require);
+      } else if (Date.now() - startTime >= maxWaitMs) {
+        callback(new Error("Timeout: Monaco AMD require loader not available after " + maxWaitMs + "ms"));
       } else {
-        console.warn("Theme definition function not found, using default theme");
+        setTimeout(check, intervalMs);
       }
+    };
+    check();
+  };
 
-      configureMonacoCssSupport();
-      createEditors();
-    },
-    (error) => {
-      console.error("Failed to load Monaco Editor:", error);
+  waitForRequire((err, req) => {
+    if (err) {
+      console.error(err);
       showNotification(
-        "Błąd ładowania edytora. Sprawdź połączenie internetowe.",
+        "Błąd ładowania edytora (brak loader.js). Sprawdź połączenie z internetem.",
         "error",
       );
-    },
-  );
+      return;
+    }
+
+    req.config({
+      paths: {
+        vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs",
+      },
+    });
+
+    req(
+      ["vs/editor/editor.main"],
+      () => {
+        console.log("Monaco Editor loaded successfully");
+
+        // Define custom themes immediately after Monaco loads
+        if (window.defineMonacoThemes) {
+          window.defineMonacoThemes();
+        } else {
+          console.warn("Theme definition function not found, using default theme");
+        }
+
+        configureMonacoCssSupport();
+        createEditors();
+      },
+      (error) => {
+        console.error("Failed to load Monaco Editor:", error);
+        showNotification(
+          "Błąd ładowania edytora. Sprawdź połączenie internetowe.",
+          "error",
+        );
+      },
+    );
+  });
 }
 
 function configureMonacoCssSupport() {
@@ -457,10 +485,20 @@ function createEditors() {
     setupAutoSave();
     configureBracketColors();
 
-    Object.values(editors).forEach((editor) => {
+    Object.entries(editors).forEach(([tabKey, editor]) => {
       editor.onDidChangeModelContent(() => {
         updatePreview();
         saveToLocalStorage();
+
+        // Synchronizuj edytowany kod z aktualnie wybranym plikiem w drzewie projektu
+        if (projectTreeFiles && projectTreeFiles.length && projectTreeActiveFiles[tabKey]) {
+          const activePath = projectTreeActiveFiles[tabKey];
+          const fileObj = projectTreeFiles.find(f => f.relativePath === activePath || f.name === activePath);
+          if (fileObj) {
+            fileObj.content = editor.getValue();
+            saveProjectTreeToStorage();
+          }
+        }
       });
     });
 
@@ -494,6 +532,7 @@ function hideTabContextMenu() {
 function setupEventListeners() {
   const tabContextMenu = document.getElementById("tab-context-menu");
   const ctxFormatBtn = document.getElementById("tab-ctx-format");
+  const ctxImportBtn = document.getElementById("tab-ctx-import-one");
   const ctxClearOneBtn = document.getElementById("tab-ctx-clear-one");
   const ctxClearAllBtn = document.getElementById("tab-ctx-clear-all");
 
@@ -513,15 +552,19 @@ function setupEventListeners() {
       switchTab(targetTab, tab);
 
       if (tabContextMenu) {
+        const lbl = targetTab.toUpperCase();
+        if (ctxImportBtn) {
+          const importSpan = ctxImportBtn.querySelector("span");
+          if (importSpan) importSpan.textContent = `Wczytaj plik (${lbl})`;
+        }
         if (ctxClearOneBtn) {
-          const lbl = targetTab.toUpperCase();
           const span = ctxClearOneBtn.querySelector("span");
           if (span) span.textContent = `Wyczyść bufor ${lbl}`;
         }
         tabContextMenu.style.display = "flex";
 
         const menuWidth = 200;
-        const menuHeight = 120;
+        const menuHeight = 150;
         let left = e.clientX;
         let top = e.clientY;
 
@@ -543,6 +586,13 @@ function setupEventListeners() {
       const tabToFormat = contextMenuTab || currentTab;
       hideTabContextMenu();
       formatCode(tabToFormat);
+    });
+  }
+
+  if (ctxImportBtn) {
+    ctxImportBtn.addEventListener("click", () => {
+      hideTabContextMenu();
+      openSingleFilePicker();
     });
   }
 
@@ -582,6 +632,27 @@ function setupEventListeners() {
   document
     .getElementById("import-projects-input")
     .addEventListener("change", onImportProjectsFileSelected);
+  document
+    .getElementById("import-single-file-btn")
+    ?.addEventListener("click", openSingleFilePicker);
+  document
+    .getElementById("import-single-file-input")
+    ?.addEventListener("change", onSingleFileSelected);
+  document
+    .getElementById("import-folder-btn")
+    ?.addEventListener("click", openFolderPicker);
+  document
+    .getElementById("import-folder-input")
+    ?.addEventListener("change", onFolderSelected);
+  document
+    .getElementById("toggle-tree-btn")
+    ?.addEventListener("click", toggleProjectTreePanel);
+  document
+    .getElementById("project-tree-close-btn")
+    ?.addEventListener("click", closeProjectTreePanel);
+  document
+    .getElementById("project-tree-clear-btn")
+    ?.addEventListener("click", clearProjectTree);
   elements.themeBtn.addEventListener("click", toggleTheme);
 
   document.getElementById("run-btn").addEventListener("click", runCode);
@@ -833,9 +904,52 @@ let previewTimeout = null;
  * wyrzucenie błędu i drukowanie kodu JS jako zwykłego tekstu w oknie preview).
  */
 function buildCompleteHtml(isForPreview = false) {
-  const rawHtml = editors.html ? editors.html.getValue() : "";
+  let rawHtml = editors.html ? editors.html.getValue() : "";
   const rawCss = editors.css ? editors.css.getValue() : "";
   const rawJs = editors.js ? editors.js.getValue() : "";
+
+  // W trybie preview neutralizujemy relatywne <link rel="stylesheet" href="..."> (np. style.css, index.css),
+  // które w srcdoc powodują zapytanie HTTP i błąd 404 w konsoli przeglądarki.
+  // Jeśli w drzewie projektu (projectTreeFiles) lub w edytorze CSS mamy ten plik, wstawiamy go jako <style>.
+  if (isForPreview && rawHtml) {
+    rawHtml = rawHtml.replace(
+      /<link\s+[^>]*rel=[\x27\x22]stylesheet[\x27\x22][^>]*>/gi,
+      (linkTag) => {
+        const hrefMatch = linkTag.match(/href=[\x27\x22]([^\x27\x22]+)[\x27\x22]/i);
+        if (!hrefMatch) return linkTag;
+        const href = hrefMatch[1].trim();
+
+        // Zewnętrzne arkusze CDN (http, https, //) pozostawiamy bez zmian
+        if (/^(https?:)?\/\//i.test(href) || href.startsWith("data:")) {
+          return linkTag;
+        }
+
+        // Relatywny plik CSS (np. "style.css", "./styles.css")
+        const cleanHref = href.replace(/^(\.\/|\/)+/, "");
+        const fileName = cleanHref.split("/").pop();
+
+        // 1. Sprawdź czy plik jest w drzewie projektu
+        if (typeof projectTreeFiles !== "undefined" && Array.isArray(projectTreeFiles)) {
+          const found = projectTreeFiles.find(
+            (f) =>
+              f.name.toLowerCase() === fileName.toLowerCase() ||
+              (f.relativePath && f.relativePath.toLowerCase().endsWith(cleanHref.toLowerCase()))
+          );
+          if (found && typeof found.content === "string") {
+            return `<style data-injected-from="${fileName}">\n${found.content}\n</style>`;
+          }
+        }
+
+        // 2. Jeśli nazwa odpowiada stylowi z edytora CSS (style.css / index.css itp.), a edytor ma treść
+        if (/^(style|index|styles|main)\.css$/i.test(fileName) && rawCss.trim()) {
+          // Ten styl jest już wstrzykiwany przez styleBlock, więc bezpiecznie wyciszamy link zapobiegając 404
+          return `<!-- Virtualized link: ${fileName} (injected from CSS editor) -->`;
+        }
+
+        return `<!-- Suppressed local stylesheet to prevent 404: ${fileName} -->`;
+      }
+    );
+  }
 
   const styleBlock = rawCss.trim() ? `<style>\n${rawCss}\n</style>` : "";
 
@@ -1601,14 +1715,18 @@ function onImportProjectsFileSelected(ev) {
                 </p>
                 </div>
                 <div class="modal-body-actions">
-                    <button type="button" class="btn modal-action-btn" onclick="closeModal(); applyProjectsImport('merge');">
-                        <i class="fas fa-layer-group modal-action-btn__icon" aria-hidden="true"></i>
-                        <span class="modal-action-btn__label">SCAL</span>
-                    </button>
-                    <button type="button" class="btn btn-danger modal-action-btn" onclick="closeModal(); applyProjectsImport('replace');">
-                        <i class="fas fa-triangle-exclamation modal-action-btn__icon" aria-hidden="true"></i>
-                        <span class="modal-action-btn__label">ZASTĄP WSZYSTKO</span>
-                    </button>
+                    <div class="btn-bg">
+                        <button type="button" class="btn modal-action-btn" onclick="closeModal(); applyProjectsImport('merge');">
+                            <i class="fas fa-layer-group modal-action-btn__icon" aria-hidden="true"></i>
+                            <span class="modal-action-btn__label">SCAL</span>
+                        </button>
+                    </div>
+                    <div class="btn-bg">
+                        <button type="button" class="btn btn-danger modal-action-btn" onclick="closeModal(); applyProjectsImport('replace');">
+                            <i class="fas fa-triangle-exclamation modal-action-btn__icon" aria-hidden="true"></i>
+                            <span class="modal-action-btn__label">ZASTĄP WSZYSTKO</span>
+                        </button>
+                    </div>
                 </div>
             `;
       showCustomModal("IMPORT PROJEKTÓW", html, null, "archive-modal");
@@ -1622,6 +1740,485 @@ function onImportProjectsFileSelected(ev) {
     showNotification("Błąd odczytu pliku.", "error");
   };
   reader.readAsText(file, "UTF-8");
+}
+
+function openSingleFilePicker() {
+  const input = document.getElementById("import-single-file-input");
+  if (input) input.click();
+}
+
+function onSingleFileSelected(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  ev.target.value = "";
+  if (!file) return;
+
+  const fileName = file.name.toLowerCase();
+  let targetTab = null;
+  if (fileName.endsWith(".html") || fileName.endsWith(".htm")) {
+    targetTab = "html";
+  } else if (fileName.endsWith(".css")) {
+    targetTab = "css";
+  } else if (fileName.endsWith(".js") || fileName.endsWith(".mjs") || fileName.endsWith(".cjs")) {
+    targetTab = "js";
+  }
+
+  if (!targetTab) {
+    showNotification("Wybierz plik z rozszerzeniem .html, .css lub .js.", "warning");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const code = String(reader.result ?? "");
+      const tabLabel = targetTab.toUpperCase();
+
+      showConfirmModal(
+        `Wczytaj ${file.name}`,
+        `Wczytać zawartość pliku <strong style="color:var(--highlight)">${file.name}</strong> do bufora <strong>${tabLabel}</strong>?<br><br>Dotychczasowa treść tej zakładki zostanie zastąpiona.`,
+        () => {
+          if (editors[targetTab]) {
+            editors[targetTab].setValue(code);
+            switchTab(targetTab);
+            updatePreview();
+            flushAutoSaveNow();
+            showNotification(`Wczytano plik „${file.name}” do bufora ${tabLabel}.`, "success");
+          }
+        },
+        "WCZYTAJ",
+        "btn-primary",
+      );
+    } catch (err) {
+      showNotification("Błąd wczytywania pliku: " + err.message, "error");
+      console.error(err);
+    }
+  };
+  reader.onerror = () => {
+    showNotification("Błąd odczytu pliku.", "error");
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+function openFolderPicker() {
+  const input = document.getElementById("import-folder-input");
+  if (input) input.click();
+}
+
+// --- Project File Tree Explorer State ---
+const STORAGE_KEY_PROJECT_TREE = "cyberProjectTreeState";
+let projectTreeFiles = [];
+let projectTreeActivePath = null;
+let projectTreeActiveFiles = { html: null, css: null, js: null };
+let projectTreeRootName = "PROJEKT";
+
+function saveProjectTreeToStorage() {
+  try {
+    if (!projectTreeFiles || !projectTreeFiles.length) {
+      localStorage.removeItem(STORAGE_KEY_PROJECT_TREE);
+      return;
+    }
+    const state = {
+      rootName: projectTreeRootName || "PROJEKT",
+      files: projectTreeFiles,
+      activePath: projectTreeActivePath,
+      activeFiles: projectTreeActiveFiles,
+    };
+    localStorage.setItem(STORAGE_KEY_PROJECT_TREE, JSON.stringify(state));
+  } catch (e) {
+    console.warn("Nie udało się zapisać drzewa plików do localStorage:", e);
+  }
+}
+
+function loadProjectTreeFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PROJECT_TREE);
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    if (!state || !Array.isArray(state.files) || !state.files.length) return false;
+
+    projectTreeRootName = state.rootName || "PROJEKT";
+    projectTreeFiles = state.files;
+    projectTreeActivePath = state.activePath || null;
+    projectTreeActiveFiles = state.activeFiles || { html: null, css: null, js: null };
+
+    renderProjectFileTree(projectTreeRootName, projectTreeFiles, false);
+    return true;
+  } catch (e) {
+    console.warn("Błąd odczytu drzewa plików z localStorage:", e);
+    return false;
+  }
+}
+
+function toggleProjectTreePanel() {
+  const panel = document.getElementById("project-tree-panel");
+  const btn = document.getElementById("toggle-tree-btn");
+  if (!panel) return;
+  const isHidden = panel.style.display === "none";
+  panel.style.display = isHidden ? "flex" : "none";
+  if (btn) btn.classList.toggle("active", isHidden);
+  if (editors[currentTab]) {
+    setTimeout(() => editors[currentTab].layout(), 50);
+  }
+}
+
+function closeProjectTreePanel() {
+  const panel = document.getElementById("project-tree-panel");
+  const btn = document.getElementById("toggle-tree-btn");
+  if (panel) panel.style.display = "none";
+  if (btn) btn.classList.remove("active");
+  if (editors[currentTab]) {
+    setTimeout(() => editors[currentTab].layout(), 50);
+  }
+}
+
+function openProjectTreePanel() {
+  const panel = document.getElementById("project-tree-panel");
+  const btn = document.getElementById("toggle-tree-btn");
+  if (panel) panel.style.display = "flex";
+  if (btn) {
+    btn.style.display = "inline-flex";
+    btn.classList.add("active");
+  }
+  if (editors[currentTab]) {
+    setTimeout(() => editors[currentTab].layout(), 50);
+  }
+}
+
+function clearProjectTree() {
+  if (!projectTreeFiles || !projectTreeFiles.length) {
+    closeProjectTreePanel();
+    const btn = document.getElementById("toggle-tree-btn");
+    if (btn) btn.style.display = "none";
+    return;
+  }
+
+  showConfirmModal(
+    "Wyczyść listę plików",
+    `Zamknąć bieżące drzewo projektu (<strong>${projectTreeFiles.length}</strong> plików) i wyczyścić listę?<br><br>Zawartość otwartych buforów edytora nie zostanie skasowana.`,
+    () => {
+      projectTreeFiles = [];
+      projectTreeActivePath = null;
+      projectTreeActiveFiles = { html: null, css: null, js: null };
+      projectTreeRootName = "PROJEKT";
+      const treeBody = document.getElementById("project-tree-body");
+      if (treeBody) treeBody.innerHTML = "";
+      closeProjectTreePanel();
+      const btn = document.getElementById("toggle-tree-btn");
+      if (btn) {
+        btn.style.display = "none";
+        btn.classList.remove("active");
+      }
+      saveProjectTreeToStorage();
+      showNotification("Wyczyszczono listę plików projektu.", "info");
+    },
+    "WYCZYŚĆ LISTĘ",
+    "btn-danger"
+  );
+}
+
+function buildFileTreeStructure(files) {
+  // Buduje zagnieżdżone drzewo katalogów i plików
+  const root = { name: "root", type: "folder", children: {} };
+
+  files.forEach((f) => {
+    const rawPath = f.relativePath || f.name;
+    const parts = rawPath.replace(/\\/g, "/").split("/").filter(Boolean);
+    let current = root;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isFile = i === parts.length - 1;
+
+      if (isFile) {
+        current.children[part] = {
+          name: part,
+          type: "file",
+          fileData: f,
+          path: rawPath
+        };
+      } else {
+        if (!current.children[part]) {
+          current.children[part] = {
+            name: part,
+            type: "folder",
+            children: {}
+          };
+        }
+        current = current.children[part];
+      }
+    }
+  });
+
+  return root;
+}
+
+function renderTreeBranch(node, container, depth = 0) {
+  const sortedKeys = Object.keys(node.children).sort((a, b) => {
+    const itemA = node.children[a];
+    const itemB = node.children[b];
+    if (itemA.type !== itemB.type) {
+      return itemA.type === "folder" ? -1 : 1; // foldery najpierw
+    }
+    return itemA.name.localeCompare(itemB.name);
+  });
+
+  sortedKeys.forEach((key) => {
+    const item = node.children[key];
+    const row = document.createElement("div");
+    row.className = "tree-node-row";
+    row.style.paddingLeft = `${depth * 14 + 6}px`;
+
+    if (item.type === "folder") {
+      const caret = document.createElement("i");
+      caret.className = "fas fa-chevron-down tree-folder-caret";
+
+      const folderIcon = document.createElement("i");
+      folderIcon.className = "fas fa-folder-open tree-node-icon icon-folder";
+
+      const label = document.createElement("span");
+      label.className = "tree-node-name";
+      label.textContent = item.name;
+
+      row.appendChild(caret);
+      row.appendChild(folderIcon);
+      row.appendChild(label);
+      container.appendChild(row);
+
+      const childrenContainer = document.createElement("div");
+      childrenContainer.className = "tree-folder-children";
+      container.appendChild(childrenContainer);
+
+      row.addEventListener("click", () => {
+        const isCollapsed = childrenContainer.style.display === "none";
+        childrenContainer.style.display = isCollapsed ? "flex" : "none";
+        caret.className = isCollapsed
+          ? "fas fa-chevron-down tree-folder-caret"
+          : "fas fa-chevron-right tree-folder-caret";
+        folderIcon.className = isCollapsed
+          ? "fas fa-folder-open tree-node-icon icon-folder"
+          : "fas fa-folder tree-node-icon icon-folder";
+      });
+
+      renderTreeBranch(item, childrenContainer, depth + 1);
+    } else {
+      const f = item.fileData;
+      let iconClass = "far fa-file tree-node-icon";
+      let iconType = "";
+      const lower = item.name.toLowerCase();
+      if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+        iconClass = "fab fa-html5 tree-node-icon icon-html";
+        iconType = "html";
+      } else if (lower.endsWith(".css")) {
+        iconClass = "fab fa-css3-alt tree-node-icon icon-css";
+        iconType = "css";
+      } else if (lower.endsWith(".js") || lower.endsWith(".mjs") || lower.endsWith(".cjs")) {
+        iconClass = "fab fa-js tree-node-icon icon-js";
+        iconType = "js";
+      }
+
+      const emptySpacer = document.createElement("span");
+      emptySpacer.style.width = "10px";
+      emptySpacer.style.display = "inline-block";
+
+      const fileIcon = document.createElement("i");
+      fileIcon.className = iconClass;
+
+      const label = document.createElement("span");
+      label.className = "tree-node-name";
+      label.textContent = item.name;
+      label.title = item.path;
+
+      row.appendChild(emptySpacer);
+      row.appendChild(fileIcon);
+      row.appendChild(label);
+
+      if (projectTreeActivePath === item.path) {
+        row.classList.add("active");
+      }
+
+      row.addEventListener("click", () => {
+        document.querySelectorAll(".tree-node-row").forEach(r => r.classList.remove("active"));
+        row.classList.add("active");
+        projectTreeActivePath = item.path;
+        loadProjectTreeFileIntoEditor(f);
+      });
+
+      container.appendChild(row);
+    }
+  });
+}
+
+function loadProjectTreeFileIntoEditor(treeFile) {
+  if (!treeFile) return;
+  const fileName = treeFile.name.toLowerCase();
+  let targetTab = "html";
+  if (fileName.endsWith(".css")) {
+    targetTab = "css";
+  } else if (fileName.endsWith(".js") || fileName.endsWith(".mjs") || fileName.endsWith(".cjs")) {
+    targetTab = "js";
+  }
+
+  // Zapisz bieżący plik w tablicy per zakładka
+  const currentPath = treeFile.relativePath || treeFile.name;
+  projectTreeActiveFiles[targetTab] = currentPath;
+
+  if (editors[targetTab]) {
+    editors[targetTab].setValue(treeFile.content);
+    switchTab(targetTab);
+    updatePreview();
+    flushAutoSaveNow();
+    saveProjectTreeToStorage();
+    showNotification(`Załadowano: ${currentPath}`, "info");
+  }
+}
+
+function renderProjectFileTree(rootFolderName, files, shouldOpen = true) {
+  const treeBody = document.getElementById("project-tree-body");
+  const rootTitle = document.getElementById("project-tree-root-name");
+  if (!treeBody) return;
+
+  if (rootFolderName) {
+    projectTreeRootName = rootFolderName;
+  }
+  if (rootTitle) {
+    rootTitle.textContent = projectTreeRootName || "PROJEKT";
+  }
+
+  treeBody.innerHTML = "";
+  const treeRoot = buildFileTreeStructure(files);
+  renderTreeBranch(treeRoot, treeBody, 0);
+
+  const btn = document.getElementById("toggle-tree-btn");
+  if (btn) {
+    btn.style.display = "inline-flex";
+  }
+
+  if (shouldOpen) {
+    openProjectTreePanel();
+  } else {
+    // Zachowaj panel otwarty, jeśli użytkownik miał go otwarty
+    const panel = document.getElementById("project-tree-panel");
+    if (panel && panel.style.display === "none") {
+      openProjectTreePanel();
+    }
+  }
+
+  saveProjectTreeToStorage();
+}
+
+async function onFolderSelected(ev) {
+  const files = Array.from(ev.target.files || []);
+  ev.target.value = "";
+  if (!files.length) return;
+
+  // Filtruj pliki tekstowe projektu (HTML, CSS, JS)
+  const codeFiles = files.filter(f => /\.(html|htm|css|js|mjs|cjs)$/i.test(f.name));
+
+  if (!codeFiles.length) {
+    showNotification("W wybranym folderze nie znaleziono plików .html, .css ani .js.", "warning");
+    return;
+  }
+
+  const readFileText = (f) => new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result ?? ""));
+    r.onerror = () => resolve("");
+    r.readAsText(f, "UTF-8");
+  });
+
+  try {
+    const fileEntries = await Promise.all(codeFiles.map(async (f) => {
+      const content = await readFileText(f);
+      return {
+        name: f.name,
+        relativePath: f.webkitRelativePath || f.name,
+        size: f.size,
+        content: content
+      };
+    }));
+
+    projectTreeFiles = fileEntries;
+
+    const htmlFiles = fileEntries.filter(f => /\.(html|htm)$/i.test(f.name));
+    const cssFiles = fileEntries.filter(f => /\.css$/i.test(f.name));
+    const jsFiles = fileEntries.filter(f => /\.(js|mjs|cjs)$/i.test(f.name));
+
+    const pickBest = (list, preferredNames) => {
+      if (!list.length) return null;
+      for (const name of preferredNames) {
+        const found = list.find(f => f.name.toLowerCase() === name.toLowerCase());
+        if (found) return found;
+      }
+      return list.slice().sort((a, b) => {
+        const depthA = a.relativePath.split("/").length;
+        const depthB = b.relativePath.split("/").length;
+        return depthA - depthB;
+      })[0];
+    };
+
+    const selectedHtml = pickBest(htmlFiles, ["index.html", "main.html", "app.html"]);
+    const selectedCss = pickBest(cssFiles, ["style.css", "index.css", "styles.css", "main.css"]);
+    const selectedJs = pickBest(jsFiles, ["index.js", "script.js", "main.js", "app.js"]);
+
+    const folderName = (files[0].webkitRelativePath ? files[0].webkitRelativePath.split("/")[0] : "folder");
+    const summaryItems = [];
+    if (selectedHtml) summaryItems.push(`HTML: <strong>${selectedHtml.relativePath}</strong>`);
+    if (selectedCss) summaryItems.push(`CSS: <strong>${selectedCss.relativePath}</strong>`);
+    if (selectedJs) summaryItems.push(`JS: <strong>${selectedJs.relativePath}</strong>`);
+
+    const hasMultipleFiles = fileEntries.length > 1;
+
+    let msg = `W folderze <strong style="color:var(--highlight)">${folderName}</strong> znaleziono <strong>${fileEntries.length}</strong> plików projektu.<br><br>` +
+      `<ul style="margin: 8px 0; padding-left: 20px; line-height: 1.6;">` +
+      summaryItems.map(item => `<li>${item}</li>`).join("") +
+      `</ul>`;
+
+    if (hasMultipleFiles) {
+      msg += `<br><span style="color:var(--highlight);"><i class="fas fa-sitemap"></i> Zostanie otwarte drzewo plików z pełną strukturą folderu.</span>`;
+    }
+
+    showConfirmModal(
+      `Wczytaj folder: ${folderName}`,
+      msg,
+      () => {
+        let loadedCount = 0;
+        if (selectedHtml && editors.html) {
+          editors.html.setValue(selectedHtml.content);
+          projectTreeActivePath = selectedHtml.relativePath;
+          projectTreeActiveFiles.html = selectedHtml.relativePath;
+          loadedCount++;
+        }
+        if (selectedCss && editors.css) {
+          editors.css.setValue(selectedCss.content);
+          projectTreeActiveFiles.css = selectedCss.relativePath;
+          loadedCount++;
+        }
+        if (selectedJs && editors.js) {
+          editors.js.setValue(selectedJs.content);
+          projectTreeActiveFiles.js = selectedJs.relativePath;
+          loadedCount++;
+        }
+        updatePreview();
+        flushAutoSaveNow();
+
+        // Jeśli folder ma więcej plików, renderujemy i pokazujemy drzewo plików
+        if (hasMultipleFiles) {
+          renderProjectFileTree(folderName, fileEntries);
+        } else {
+          closeProjectTreePanel();
+          const treeBtn = document.getElementById("toggle-tree-btn");
+          if (treeBtn) treeBtn.style.display = "none";
+        }
+
+        showNotification(`Wczytano projekt z folderu „${folderName}” (${fileEntries.length} plików).`, "success");
+      },
+      "WCZYTAJ PROJEKT",
+      "btn-primary"
+    );
+  } catch (err) {
+    showNotification("Błąd wczytywania folderu: " + err.message, "error");
+    console.error(err);
+  }
 }
 
 // --- Editor Features ---
@@ -2017,32 +2614,35 @@ function showSettings() {
         <div id="settings-general" class="settings-tab-content active">
             <div class="setting-item setting-range">
                 <label class="setting-label">
-                    <i class="fas fa-font setting-icon"></i>
-                    <span>Font Size</span>
-                </label>
-                <div class="setting-control">
-                    <input type="range" min="10" max="24" value="${editorSettings.fontSize}" 
-                        onchange="updateSetting('fontSize', parseInt(this.value))" 
-                        oninput="this.nextElementSibling.textContent = this.value + 'px'">
+                    <span class="setting-label-text"><i class="fas fa-font"></i> Font Size</span>
                     <span class="setting-value">${editorSettings.fontSize}px</span>
+                </label>
+                <div class="btn-bg btn-bg-full">
+                    <div class="setting-control">
+                        <input type="range" min="10" max="24" value="${editorSettings.fontSize}" 
+                            data-setting="fontSize" data-unit="px"
+                            onchange="updateSetting('fontSize', parseInt(this.value))" 
+                            oninput="this.closest('.setting-range').querySelector('.setting-value').textContent = this.value + 'px'">
+                    </div>
                 </div>
             </div>
             <div class="setting-item setting-range">
                 <label class="setting-label">
-                    <i class="fas fa-text-height setting-icon"></i>
-                    <span>Line Height</span>
-                </label>
-                <div class="setting-control">
-                    <input type="range" min="0" max="50" value="${editorSettings.lineHeight || 0}" 
-                        onchange="updateSetting('lineHeight', parseInt(this.value))" 
-                        oninput="this.nextElementSibling.textContent = (this.value == 0 ? 'Auto' : this.value + 'px')">
+                    <span class="setting-label-text"><i class="fas fa-text-height"></i> Line Height</span>
                     <span class="setting-value">${editorSettings.lineHeight === 0 ? "Auto" : editorSettings.lineHeight + "px"}</span>
+                </label>
+                <div class="btn-bg btn-bg-full">
+                    <div class="setting-control">
+                        <input type="range" min="0" max="50" value="${editorSettings.lineHeight || 0}" 
+                            data-setting="lineHeight" data-unit="px" data-auto="true"
+                            onchange="updateSetting('lineHeight', parseInt(this.value))" 
+                            oninput="this.closest('.setting-range').querySelector('.setting-value').textContent = (this.value == 0 ? 'Auto' : this.value + 'px')">
+                    </div>
                 </div>
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-font setting-icon"></i>
-                    <span>Font Family</span>
+                    <span class="setting-label-text"><i class="fas fa-font"></i> Font Family</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('fontFamily', this.value)">
                     <option value='"JetBrains Mono", monospace' ${editorSettings.fontFamily.includes("JetBrains") ? "selected" : ""}>JetBrains Mono</option>
@@ -2053,20 +2653,21 @@ function showSettings() {
             </div>
             <div class="setting-item setting-range">
                 <label class="setting-label">
-                    <i class="fas fa-indent setting-icon"></i>
-                    <span>Tab Size</span>
-                </label>
-                <div class="setting-control">
-                    <input type="range" min="2" max="8" value="${editorSettings.tabSize}" 
-                        onchange="updateSetting('tabSize', parseInt(this.value))"
-                        oninput="this.nextElementSibling.textContent = this.value">
+                    <span class="setting-label-text"><i class="fas fa-indent"></i> Tab Size</span>
                     <span class="setting-value">${editorSettings.tabSize}</span>
+                </label>
+                <div class="btn-bg btn-bg-full">
+                    <div class="setting-control">
+                        <input type="range" min="2" max="8" value="${editorSettings.tabSize}" 
+                            data-setting="tabSize"
+                            onchange="updateSetting('tabSize', parseInt(this.value))"
+                            oninput="this.closest('.setting-range').querySelector('.setting-value').textContent = this.value">
+                    </div>
                 </div>
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-text-width setting-icon"></i>
-                    <span>Word Wrap</span>
+                    <span class="setting-label-text"><i class="fas fa-text-width"></i> Word Wrap</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('wordWrap', this.value)">
                     <option value="on" ${editorSettings.wordWrap === "on" ? "selected" : ""}>ON</option>
@@ -2075,18 +2676,18 @@ function showSettings() {
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-map setting-icon"></i>
-                    <span>Minimap</span>
-                    <input type="checkbox" ${editorSettings.minimap ? "checked" : ""} 
-                        onchange="updateSetting('minimap', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-map"></i> Minimap</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.minimap ? "checked" : ""} 
+                            onchange="updateSetting('minimap', this.checked)">
+                    </div>
                 </label>
             </div>
         </div>
         <div id="settings-cursor" class="settings-tab-content">
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-mouse-pointer setting-icon"></i>
-                    <span>Cursor Style</span>
+                    <span class="setting-label-text"><i class="fas fa-mouse-pointer"></i> Cursor Style</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('cursorStyle', this.value)">
                     <option value="line" ${editorSettings.cursorStyle === "line" ? "selected" : ""}>LINE</option>
@@ -2098,8 +2699,7 @@ function showSettings() {
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-circle setting-icon"></i>
-                    <span>Cursor Blinking</span>
+                    <span class="setting-label-text"><i class="fas fa-circle"></i> Cursor Blinking</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('cursorBlinking', this.value)">
                     <option value="blink" ${editorSettings.cursorBlinking === "blink" ? "selected" : ""}>BLINK</option>
@@ -2111,18 +2711,18 @@ function showSettings() {
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-magic setting-icon"></i>
-                    <span>Smooth Caret Animation</span>
-                    <input type="checkbox" ${editorSettings.cursorSmoothCaretAnimation ? "checked" : ""} 
-                        onchange="updateSetting('cursorSmoothCaretAnimation', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-magic"></i> Smooth Caret Animation</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.cursorSmoothCaretAnimation ? "checked" : ""} 
+                            onchange="updateSetting('cursorSmoothCaretAnimation', this.checked)">
+                    </div>
                 </label>
             </div>
         </div>
         <div id="settings-formatting" class="settings-tab-content">
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-code setting-icon"></i>
-                    <span>Auto Close Brackets</span>
+                    <span class="setting-label-text"><i class="fas fa-brackets-curly"></i> Auto Close Brackets</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('autoClosingBrackets', this.value)">
                     <option value="always" ${editorSettings.autoClosingBrackets === "always" ? "selected" : ""}>ALWAYS</option>
@@ -2133,8 +2733,7 @@ function showSettings() {
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-quote-right setting-icon"></i>
-                    <span>Auto Close Quotes</span>
+                    <span class="setting-label-text"><i class="fas fa-quote-right"></i> Auto Close Quotes</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('autoClosingQuotes', this.value)">
                     <option value="always" ${editorSettings.autoClosingQuotes === "always" ? "selected" : ""}>ALWAYS</option>
@@ -2145,24 +2744,25 @@ function showSettings() {
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-palette setting-icon"></i>
-                    <span>Bracket Pair Colorization</span>
-                    <input type="checkbox" ${editorSettings.bracketPairColorization ? "checked" : ""} 
-                        onchange="updateSetting('bracketPairColorization', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-palette"></i> Bracket Pair Colorization</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.bracketPairColorization ? "checked" : ""} 
+                            onchange="updateSetting('bracketPairColorization', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-code-branch setting-icon"></i>
-                    <span>Folding</span>
-                    <input type="checkbox" ${editorSettings.folding ? "checked" : ""} 
-                        onchange="updateSetting('folding', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-code-branch"></i> Folding</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.folding ? "checked" : ""} 
+                            onchange="updateSetting('folding', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-indent setting-icon"></i>
-                    <span>Insert Spaces</span>
+                    <span class="setting-label-text"><i class="fas fa-indent"></i> Insert Spaces</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('insertSpaces', this.value === 'true')">
                     <option value="true" ${editorSettings.insertSpaces ? "selected" : ""}>SPACES</option>
@@ -2171,8 +2771,7 @@ function showSettings() {
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-align-left setting-icon"></i>
-                    <span>Auto Indent</span>
+                    <span class="setting-label-text"><i class="fas fa-align-left"></i> Auto Indent</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('autoIndent', this.value)">
                     <option value="none" ${editorSettings.autoIndent === "none" ? "selected" : ""}>NONE</option>
@@ -2184,24 +2783,25 @@ function showSettings() {
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-paste setting-icon"></i>
-                    <span>Format on Paste</span>
-                    <input type="checkbox" ${editorSettings.formatOnPaste ? "checked" : ""} 
-                        onchange="updateSetting('formatOnPaste', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-paste"></i> Format on Paste</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.formatOnPaste ? "checked" : ""} 
+                            onchange="updateSetting('formatOnPaste', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-keyboard setting-icon"></i>
-                    <span>Format on Type</span>
-                    <input type="checkbox" ${editorSettings.formatOnType ? "checked" : ""} 
-                        onchange="updateSetting('formatOnType', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-keyboard"></i> Format on Type</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.formatOnType ? "checked" : ""} 
+                            onchange="updateSetting('formatOnType', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-code setting-icon"></i>
-                    <span>Match Brackets</span>
+                    <span class="setting-label-text"><i class="fas fa-brackets-curly"></i> Match Brackets</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('matchBrackets', this.value)">
                     <option value="always" ${editorSettings.matchBrackets === "always" ? "selected" : ""}>ALWAYS</option>
@@ -2213,8 +2813,7 @@ function showSettings() {
         <div id="settings-display" class="settings-tab-content">
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-eye-slash setting-icon"></i>
-                    <span>Render Whitespace</span>
+                    <span class="setting-label-text"><i class="fas fa-eye-slash"></i> Render Whitespace</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('renderWhitespace', this.value)">
                     <option value="none" ${editorSettings.renderWhitespace === "none" ? "selected" : ""}>NONE</option>
@@ -2226,48 +2825,52 @@ function showSettings() {
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-align-left setting-icon"></i>
-                    <span>Render Indent Guides</span>
-                    <input type="checkbox" ${editorSettings.renderIndentGuides ? "checked" : ""} 
-                        onchange="updateSetting('renderIndentGuides', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-align-left"></i> Render Indent Guides</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.renderIndentGuides ? "checked" : ""} 
+                            onchange="updateSetting('renderIndentGuides', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-arrows-alt-v setting-icon"></i>
-                    <span>Scroll Beyond Last Line</span>
-                    <input type="checkbox" ${editorSettings.scrollBeyondLastLine ? "checked" : ""} 
-                        onchange="updateSetting('scrollBeyondLastLine', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-arrows-alt-v"></i> Scroll Beyond Last Line</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.scrollBeyondLastLine ? "checked" : ""} 
+                            onchange="updateSetting('scrollBeyondLastLine', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-search-plus setting-icon"></i>
-                    <span>Mouse Wheel Zoom</span>
-                    <input type="checkbox" ${editorSettings.mouseWheelZoom ? "checked" : ""} 
-                        onchange="updateSetting('mouseWheelZoom', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-search-plus"></i> Mouse Wheel Zoom</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.mouseWheelZoom ? "checked" : ""} 
+                            onchange="updateSetting('mouseWheelZoom', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-highlighter setting-icon"></i>
-                    <span>Occurrences Highlight</span>
-                    <input type="checkbox" ${editorSettings.occurrencesHighlight ? "checked" : ""} 
-                        onchange="updateSetting('occurrencesHighlight', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-highlighter"></i> Occurrences Highlight</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.occurrencesHighlight ? "checked" : ""} 
+                            onchange="updateSetting('occurrencesHighlight', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-marker setting-icon"></i>
-                    <span>Selection Highlight</span>
-                    <input type="checkbox" ${editorSettings.selectionHighlight ? "checked" : ""} 
-                        onchange="updateSetting('selectionHighlight', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-marker"></i> Selection Highlight</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.selectionHighlight ? "checked" : ""} 
+                            onchange="updateSetting('selectionHighlight', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-highlighter setting-icon"></i>
-                    <span>Render Line Highlight</span>
+                    <span class="setting-label-text"><i class="fas fa-highlighter"></i> Render Line Highlight</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('renderLineHighlight', this.value)">
                     <option value="none" ${editorSettings.renderLineHighlight === "none" ? "selected" : ""}>NONE</option>
@@ -2280,72 +2883,79 @@ function showSettings() {
         <div id="settings-advanced" class="settings-tab-content">
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-palette setting-icon"></i>
-                    <span>Color Decorators</span>
-                    <input type="checkbox" ${editorSettings.colorDecorators ? "checked" : ""} 
-                        onchange="updateSetting('colorDecorators', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-palette"></i> Color Decorators</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.colorDecorators ? "checked" : ""} 
+                            onchange="updateSetting('colorDecorators', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-link setting-icon"></i>
-                    <span>Links</span>
-                    <input type="checkbox" ${editorSettings.links !== false ? "checked" : ""} 
-                        onchange="updateSetting('links', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-link"></i> Links</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.links !== false ? "checked" : ""} 
+                            onchange="updateSetting('links', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-code setting-icon"></i>
-                    <span>Code Lens</span>
-                    <input type="checkbox" ${editorSettings.codeLens ? "checked" : ""} 
-                        onchange="updateSetting('codeLens', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-code"></i> Code Lens</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.codeLens ? "checked" : ""} 
+                            onchange="updateSetting('codeLens', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-mouse setting-icon"></i>
-                    <span>Drag and Drop</span>
-                    <input type="checkbox" ${editorSettings.dragAndDrop !== false ? "checked" : ""} 
-                        onchange="updateSetting('dragAndDrop', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-mouse"></i> Drag and Drop</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.dragAndDrop !== false ? "checked" : ""} 
+                            onchange="updateSetting('dragAndDrop', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-copy setting-icon"></i>
-                    <span>Empty Selection Clipboard</span>
-                    <input type="checkbox" ${editorSettings.emptySelectionClipboard !== false ? "checked" : ""} 
-                        onchange="updateSetting('emptySelectionClipboard', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-copy"></i> Empty Selection Clipboard</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.emptySelectionClipboard !== false ? "checked" : ""} 
+                            onchange="updateSetting('emptySelectionClipboard', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-highlighter setting-icon"></i>
-                    <span>Copy with Syntax Highlighting</span>
-                    <input type="checkbox" ${editorSettings.copyWithSyntaxHighlighting !== false ? "checked" : ""} 
-                        onchange="updateSetting('copyWithSyntaxHighlighting', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-highlighter"></i> Copy with Syntax Highlighting</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.copyWithSyntaxHighlighting !== false ? "checked" : ""} 
+                            onchange="updateSetting('copyWithSyntaxHighlighting', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-sliders-h setting-icon"></i>
-                    <span>Smooth Scrolling</span>
-                    <input type="checkbox" ${editorSettings.smoothScrolling ? "checked" : ""} 
-                        onchange="updateSetting('smoothScrolling', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-sliders-h"></i> Smooth Scrolling</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.smoothScrolling ? "checked" : ""} 
+                            onchange="updateSetting('smoothScrolling', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-circle setting-icon"></i>
-                    <span>Rounded Selection</span>
-                    <input type="checkbox" ${editorSettings.roundedSelection ? "checked" : ""} 
-                        onchange="updateSetting('roundedSelection', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-circle"></i> Rounded Selection</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.roundedSelection ? "checked" : ""} 
+                            onchange="updateSetting('roundedSelection', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-mouse-pointer setting-icon"></i>
-                    <span>Multi Cursor Modifier</span>
+                    <span class="setting-label-text"><i class="fas fa-mouse-pointer"></i> Multi Cursor Modifier</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('multiCursorModifier', this.value)">
                     <option value="ctrlCmd" ${editorSettings.multiCursorModifier === "ctrlCmd" ? "selected" : ""}>CTRL/CMD</option>
@@ -2354,8 +2964,7 @@ function showSettings() {
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-code-branch setting-icon"></i>
-                    <span>Show Folding Controls</span>
+                    <span class="setting-label-text"><i class="fas fa-code-branch"></i> Show Folding Controls</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('showFoldingControls', this.value)">
                     <option value="always" ${editorSettings.showFoldingControls === "always" ? "selected" : ""}>ALWAYS</option>
@@ -2365,16 +2974,16 @@ function showSettings() {
             </div>
             <div class="setting-item">
                 <label class="setting-label">
-                    <i class="fas fa-lightbulb setting-icon"></i>
-                    <span>Suggest on Trigger Characters</span>
-                    <input type="checkbox" ${editorSettings.suggestOnTriggerCharacters !== false ? "checked" : ""} 
-                        onchange="updateSetting('suggestOnTriggerCharacters', this.checked)">
+                    <span class="setting-label-text"><i class="fas fa-lightbulb"></i> Suggest on Trigger Characters</span>
+                    <div class="btn-bg">
+                        <input type="checkbox" ${editorSettings.suggestOnTriggerCharacters !== false ? "checked" : ""} 
+                            onchange="updateSetting('suggestOnTriggerCharacters', this.checked)">
+                    </div>
                 </label>
             </div>
             <div class="setting-item setting-select">
                 <label class="setting-label">
-                    <i class="fas fa-keyboard setting-icon"></i>
-                    <span>Accept Suggestion on Enter</span>
+                    <span class="setting-label-text"><i class="fas fa-keyboard"></i> Accept Suggestion on Enter</span>
                 </label>
                 <select class="setting-select-input" onchange="updateSetting('acceptSuggestionOnEnter', this.value)">
                     <option value="on" ${editorSettings.acceptSuggestionOnEnter === "on" || !editorSettings.acceptSuggestionOnEnter ? "selected" : ""}>ON</option>
@@ -2384,14 +2993,16 @@ function showSettings() {
             </div>
             <div class="setting-item setting-range">
                 <label class="setting-label">
-                    <i class="fas fa-clock setting-icon"></i>
-                    <span>Quick Suggestions Delay</span>
-                </label>
-                <div class="setting-control">
-                    <input type="range" min="0" max="1000" step="50" value="${editorSettings.quickSuggestionsDelay || 100}" 
-                        onchange="updateSetting('quickSuggestionsDelay', parseInt(this.value))"
-                        oninput="this.nextElementSibling.textContent = this.value + 'ms'">
+                    <span class="setting-label-text"><i class="fas fa-clock"></i> Quick Suggestions Delay</span>
                     <span class="setting-value">${editorSettings.quickSuggestionsDelay || 100}ms</span>
+                </label>
+                <div class="btn-bg btn-bg-full">
+                    <div class="setting-control">
+                        <input type="range" min="0" max="1000" step="50" value="${editorSettings.quickSuggestionsDelay || 100}" 
+                            data-setting="quickSuggestionsDelay" data-unit="ms"
+                            onchange="updateSetting('quickSuggestionsDelay', parseInt(this.value))"
+                            oninput="this.closest('.setting-range').querySelector('.setting-value').textContent = this.value + 'ms'">
+                    </div>
                 </div>
             </div>
         </div>
@@ -3165,11 +3776,12 @@ function showCyberAlert(title, message, okLabel) {
     safe +
     "</p></div>" +
     '<div class="modal-body-actions">' +
+    '<div class="btn-bg">' +
     '<button type="button" class="btn btn-primary modal-action-btn" onclick="closeModal()">' +
     '<i class="fas fa-check modal-action-btn__icon" aria-hidden="true"></i>' +
     '<span class="modal-action-btn__label">' +
     label +
-    "</span></button></div>",
+    "</span></button></div></div>",
     null,
     "confirm-modal",
   );
