@@ -3,7 +3,9 @@ const elements = {
   previewIframe: document.getElementById("preview-iframe"),
   fileStatus: document.getElementById("file-status"),
   editorStatus: document.getElementById("editor-status"),
-  themeBtn: document.getElementById("theme-btn"),
+  themeBtn:
+    document.getElementById("theme-btn") ||
+    document.getElementById("theme-toggle"),
   modal: {
     container: document.getElementById("modal-container"),
     modal: document.querySelector(".modal"),
@@ -653,7 +655,11 @@ function setupEventListeners() {
   document
     .getElementById("project-tree-clear-btn")
     ?.addEventListener("click", clearProjectTree);
-  elements.themeBtn.addEventListener("click", toggleTheme);
+  elements.themeBtn?.addEventListener("click", toggleTheme);
+  const themeToggleBtn = document.getElementById("theme-toggle");
+  if (themeToggleBtn && themeToggleBtn !== elements.themeBtn) {
+    themeToggleBtn.addEventListener("click", toggleTheme);
+  }
 
   document.getElementById("run-btn").addEventListener("click", runCode);
   document.getElementById("format-btn").addEventListener("click", formatCode);
@@ -3420,10 +3426,22 @@ function showShortcuts() {
 }
 
 // --- Theme & Visuals ---
+// Obsługa przełącznika motywów z blokadą animacji
 function toggleTheme() {
-  const current = document.documentElement.getAttribute("theme");
+  // 1. Dodaj klasę blokującą tranzycje
+  document.documentElement.classList.add("theme-switching");
+
+  const current =
+    document.documentElement.getAttribute("data-theme") ||
+    document.documentElement.getAttribute("theme");
   const next = current === "dark" ? "light" : "dark";
+
   document.documentElement.setAttribute("theme", next);
+  if (next === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
   localStorage.setItem("codeEditorTheme", next);
 
   if (window.monaco) {
@@ -3442,20 +3460,46 @@ function toggleTheme() {
     }
   }
 
-  elements.themeBtn.innerHTML =
-    next === "dark"
-      ? '<i class="fas fa-moon"></i>'
-      : '<i class="fas fa-sun"></i>';
+  const btn = elements.themeBtn || document.getElementById("theme-toggle");
+  if (btn) {
+    if (btn.id === "theme-toggle" && !btn.querySelector("i")) {
+      btn.innerHTML = next === "dark" ? "Jasny motyw" : "Ciemny motyw";
+    } else {
+      btn.innerHTML =
+        next === "dark"
+          ? '<i class="fas fa-moon"></i>'
+          : '<i class="fas fa-sun"></i>';
+    }
+  }
+
+  // 2. Wymuś reflow (przeliczenie stylów), aby przeglądarka od razu zaaplikowała brak tranzycji
+  window.getComputedStyle(document.documentElement).cssText;
+
+  // 3. Zdejmij klasę po minimalnym opóźnieniu
+  setTimeout(() => {
+    document.documentElement.classList.remove("theme-switching");
+  }, 50);
 }
 
 function loadTheme() {
   const saved = localStorage.getItem("codeEditorTheme") || "dark";
   document.documentElement.setAttribute("theme", saved);
-  if (elements.themeBtn)
-    elements.themeBtn.innerHTML =
-      saved === "dark"
-        ? '<i class="fas fa-moon"></i>'
-        : '<i class="fas fa-sun"></i>';
+  if (saved === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+  const btn = elements.themeBtn || document.getElementById("theme-toggle");
+  if (btn) {
+    if (btn.id === "theme-toggle" && !btn.querySelector("i")) {
+      btn.innerHTML = saved === "dark" ? "Jasny motyw" : "Ciemny motyw";
+    } else {
+      btn.innerHTML =
+        saved === "dark"
+          ? '<i class="fas fa-moon"></i>'
+          : '<i class="fas fa-sun"></i>';
+    }
+  }
 }
 
 function switchView(view) {

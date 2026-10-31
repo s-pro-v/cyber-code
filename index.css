@@ -37,6 +37,7 @@
     --screen-bg: #f0f0f0;
     --screen-border: #adb5bd;
     /* --- light theme defaults --- */
+    --bg-color: #fefefe;
     --bg: #f8f9fa;
     --bg-primary: #fff;
     --bg-secondary: #f8f9fa;
@@ -106,9 +107,21 @@
     --padding-chassis: 0.125rem;
     --gap-chassis: 0.125rem;
     --highlight-ring: rgba(var(--rgba-highlight), 0.35);
+    --transition-ui: 0.15s ease;
 }
 
-:root[theme="dark"] {
+/* Tymczasowe blokowanie animacji przy zmianie motywu */
+:root.theme-switching,
+:root.theme-switching *,
+:root.theme-switching *::before,
+:root.theme-switching *::after {
+    transition: 0s !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+}
+
+:root[theme="dark"],
+:root[data-theme="dark"] {
     /* --- dark theme overrides --- */
     --bg-color: #1a1a1a;
     --bg: #121212;
@@ -280,10 +293,7 @@ i {
     box-sizing: border-box;
     background: var(--panel-bg);
     box-shadow: var(--shadow-button);
-    border: 0px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    border-right: 1px solid var(--border-color);
-    border-left: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
     cursor: pointer;
     color: var(--text-muted);
     font-size: 0.6rem;
@@ -322,10 +332,8 @@ i {
     height: 30px;
     background: var(--panel-bg);
     box-shadow: var(--shadow-drop);
-    border: 0px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    border-right: 1px solid var(--border-color);
-    border-left: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
+
 }
 
 .btn:hover,
@@ -361,8 +369,8 @@ i {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    height: 30px;
-    width: 30px;
+    height: 25px;
+    width: 25px;
     font-size: 0.8rem;
     transition: var(--transition-ui);
 }
@@ -803,21 +811,21 @@ html {
 }
 
 .modal-header {
-    padding: 8px 15px;
+    padding: 5px 15px;
     flex-shrink: 0;
     background-color: var(--bg-primary);
     background-image: var(--bg-mode);
-    font-family: "Orbitron";
+    font-family: var(--font-family);
     color: var(--highlight);
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: var(--shadow-drop);
     border: 1px solid var(--border-color);
+    font-weight: 700;
 }
 
 .modal-body {
-    padding: 0.125rem;
     flex: 1 1 0%;
     min-height: 0;
     overflow-y: auto;
@@ -832,7 +840,6 @@ html {
     background-size: 10px 10px;
     background-image: linear-gradient(var(--pattern-color) 1px, transparent 1px), linear-gradient(90deg, var(--pattern-color) 1px, transparent 1px);
     box-shadow: var(--shadow-inset);
-    margin: 0.25rem;
 }
 
 .modal-body:has(.modal-body-actions) {
@@ -858,6 +865,12 @@ html {
     width: fit-content;
     gap: 0.125rem;
     margin: 0.125rem auto;
+    border: 1px solid var(--border-color);
+    transition: var(--transition-ui);
+}
+
+.modal-body:has(.modal-body-actions)>.modal-body-actions:hover {
+    border-color: var(--border-color-hover);
 }
 
 .modal-actions {
@@ -905,9 +918,9 @@ html {
 #modal-container .modal-body .modal-action-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: 0.5rem;
-    min-width: 8rem;
+    min-width: 14rem;
     max-width: 14rem;
     min-height: 32px;
     height: auto;
@@ -919,10 +932,11 @@ html {
     font-family: "Share Tech Mono", var(--font-family);
     box-sizing: border-box;
     background: var(--bg-tertiary);
-    color: var(--text-color);
+    color: var(--text-muted);
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-drop);
     transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    flex-direction: row-reverse;
 }
 
 .modal-actions .modal-action-btn__icon,
@@ -933,6 +947,7 @@ html {
     flex-shrink: 0;
     width: 1.1em;
     text-align: center;
+
 }
 
 
@@ -946,18 +961,18 @@ html {
 .modal-actions .btn-primary .modal-action-btn__icon,
 #modal-container .modal-body .btn-primary .modal-action-btn__icon {
     color: var(--highlight-color);
-    transition: color 0.15s ease, transform 0.15s ease;
+    transition: var(--transition-ui);
 }
 
 .modal-actions .btn-primary .modal-action-btn__label,
 #modal-container .modal-body .btn-primary .modal-action-btn__label {
-    transition: color 0.15s ease;
+    transition: var(--transition-ui);
 }
 
 .modal-actions .btn-primary:hover,
 #modal-container .modal-body .btn-primary:hover {
     background: var(--hover-bg);
-    border-color: var(--border-color);
+    border-color: var(--border-color-hover);
     color: var(--highlight-color);
 }
 
@@ -976,30 +991,39 @@ html {
 .modal-actions .modal-action-btn:not(.btn-primary):not(.btn-danger) .modal-action-btn__icon,
 #modal-container .modal-body .modal-action-btn:not(.btn-primary):not(.btn-danger) .modal-action-btn__icon {
     color: var(--text-muted);
-    transition: color 0.15s ease;
 }
 
 .modal-actions .modal-action-btn:not(.btn-primary):not(.btn-danger) .modal-action-btn__label,
 #modal-container .modal-body .modal-action-btn:not(.btn-primary):not(.btn-danger) .modal-action-btn__label {
     transition: color 0.15s ease;
+    color: var(--text-muted);
 }
+
 
 .modal-actions .modal-action-btn:not(.btn-primary):not(.btn-danger):hover,
 #modal-container .modal-body .modal-action-btn:not(.btn-primary):not(.btn-danger):hover {
     background: var(--hover-bg);
     border-color: var(--border-color);
-    color: #ffffff;
+    color: var(--text-color);
+
+    &:hover i {
+        color: var(--danger-color);
+    }
 }
+
+
 
 .modal-actions .modal-action-btn:not(.btn-primary):not(.btn-danger):hover .modal-action-btn__label,
 #modal-container .modal-body .modal-action-btn:not(.btn-primary):not(.btn-danger):hover .modal-action-btn__label {
-    color: #ffffff;
+    color: var(--text-color);
 }
+
 
 .modal-actions .modal-action-btn:not(.btn-primary):not(.btn-danger):hover .modal-action-btn__icon,
 #modal-container .modal-body .modal-action-btn:not(.btn-primary):not(.btn-danger):hover .modal-action-btn__icon {
-    color: #ffffff;
+    color: var(--text-color);
 }
+
 
 .modal-actions .modal-action-btn:active,
 #modal-container .modal-body .modal-action-btn:active {
@@ -1178,7 +1202,7 @@ html {
     font-size: 0.55rem;
     letter-spacing: 0.1em;
     font-family: "Share Tech Mono", var(--font-family);
-    min-height: 30px;
+    min-height: 25px;
     padding: 0.35rem 0.75rem;
 }
 
@@ -1222,7 +1246,7 @@ html {
 }
 
 .save-archive-hint {
-    font-size: 0.88rem;
+    font-size: 0.68rem;
     line-height: 1.5;
     color: var(--text-muted);
     background: var(--bg-primary);
@@ -1230,7 +1254,6 @@ html {
     position: relative;
     padding: 0.2rem 0.5rem;
     width: 100%;
-    margin: 0 0 0.5rem 0;
     display: block;
     box-shadow: none;
     pointer-events: none;
@@ -1294,6 +1317,8 @@ html {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 0.125rem;
     align-content: start;
+    padding: 0.125rem;
+    margin: 0.125rem;
 }
 
 .load-archive-modal .load-archive-hint {
@@ -1314,8 +1339,8 @@ html {
 
 .load-archive-modal .delete-btn-container {
     position: absolute;
-    top: 6px;
-    right: 6px;
+    top: 11px;
+    right: 5px;
     z-index: 2;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -1323,6 +1348,13 @@ html {
     box-shadow: var(--shadow-inset);
     overflow: hidden;
     padding: 0.125rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg);
+    transition: var(--transition-ui);
+
+    &:hover {
+        border-color: var(--border-color-hover);
+    }
 }
 
 .load-archive-modal .archive-card {
@@ -1428,6 +1460,12 @@ html {
     min-height: 0;
     transition: background-color 0.2s ease;
     align-items: flex-start;
+    background-color: var(--bg-primary);
+}
+
+.load-archive-modal .archive-card:hover .archive-card-bottom {
+    background-color: var(--bg-color);
+
 }
 
 .load-archive-modal .archive-card.project-card-clickable:hover {
@@ -1652,7 +1690,7 @@ html {
 }
 
 .keybindings-modal {
-    width: 500px;
+    width: 645px;
     max-width: 90%;
     max-height: 60vh;
     min-height: 200px;
@@ -1720,7 +1758,7 @@ html {
 .settings-tab.active {
     background: var(--panel-bg);
     color: var(--highlight);
-    border-bottom: 1px solid var(--panel-bg);
+    /* border-bottom: 1px solid var(--panel-bg); */
     z-index: 10;
 }
 
@@ -1851,8 +1889,11 @@ html {
     font-size: 0.72rem;
     line-height: 1.45;
     color: var(--text-muted);
-    margin: 0 0 0.75rem;
-    padding: 0 0.15rem;
+    margin: 0 0 0.125rem 0;
+    padding: 0.2rem 0.5rem;
+    z-index: 1;
+    background: var(--bg-tertiary);
+    box-shadow: var(--shadow-drop);
 }
 
 .settings-github-panel .settings-github-intro code {
@@ -2006,17 +2047,7 @@ html {
 .settings-github-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.125rem;
-    margin-top: 0.75rem;
-    padding: 0.125rem;
-    align-items: stretch;
-    justify-items: stretch;
-    box-shadow: var(--shadow-inset);
-    border: 1px solid var(--border-color);
-    background: var(--bg-color);
-    position: relative;
-    overflow: hidden;
-    box-sizing: border-box;
+    z-index: 1;
 }
 
 .settings-github-actions .settings-github-action-btn {
@@ -2156,7 +2187,7 @@ html {
     padding: 0.4rem 0.8rem;
     box-shadow: var(--shadow-drop);
     position: relative;
-    z-index: 2;
+    z-index: 0;
     background-image: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255, 255, 255, 0.03) 10px, rgba(255, 255, 255, 0.03) 11px);
     height: 40px;
     font-size: 0.85rem;
@@ -2236,7 +2267,7 @@ html {
 .settings-sidebar .settings-tabs-chassis {
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 1;
     background: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-color);
     box-shadow: var(--shadow-drop);
@@ -2307,7 +2338,6 @@ html {
 .settings-sidebar .settings-tabs .settings-tab.active {
     background: var(--card-bg);
     color: var(--text-color);
-    border-bottom-color: var(--card-bg);
 }
 
 .settings-sidebar .settings-tabs .btn-bg.active .settings-tab i,
@@ -2415,7 +2445,7 @@ html {
     box-shadow: var(--shadow-inset);
     padding: 0.125rem;
     border: 1px solid var(--border-color);
-    background: var(--card-bg);
+    background: var(--bg-color);
     box-sizing: border-box;
 }
 
@@ -2521,10 +2551,10 @@ html {
     align-items: center;
     box-sizing: border-box;
     padding: var(--padding-chassis, 0.125rem);
-    background: var(--card-bg);
+    background: var(--bg-color);
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-inset);
-    transition: border-color var(--transition-speed, 0.15s) ease, box-shadow var(--transition-speed, 0.15s) ease;
+    transition: border-color var(--transition-speed, 0.15s) ease, box-shadow var(--transition-speed, 0.15s) ease, background var(--transition-speed, 0.5s);
     overflow: hidden;
 }
 
@@ -2541,20 +2571,22 @@ html {
     width: 100%;
     height: 32px;
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-drop);
-    background: var(--bg-tertiary);
+    box-shadow: var(--shadow-inset);
+    background: transparent;
     color: var(--text-muted);
+    transition: border-color var(--transition-speed, 0.15s) ease, box-shadow var(--transition-speed, 0.15s) ease, background var(--transition-speed, 0.5s);
 }
 
 .ja-select-wrap .btn-bg .ja-select-btn:hover {
     background: var(--hover-bg);
     color: var(--highlight-color);
     border-color: var(--border-color-hover);
+    box-shadow: none;
 }
 
 .ja-select-wrap .btn-bg .ja-select-btn.ja-open {
     box-shadow: var(--shadow-hover);
-    background: var(--bg-color);
+    background: var(--hover-bg);
     color: var(--highlight-color);
     border-color: var(--border-color);
 }
@@ -3050,7 +3082,7 @@ html {
     padding: 10px 12px;
     background: var(--bg-color);
     border: 1px solid var(--border-color);
-    border-left: 3px solid var(--highlight);
+    border-left: 2px solid var(--border-color-hover);
     overflow: hidden;
     white-space: pre-wrap;
     word-break: break-word;
@@ -3230,7 +3262,8 @@ html {
 
     background: var(--bg-color) !important;
     color: var(--highlight-color);
-    border-color: var(--border-color-hover);
+    box-shadow: var(--shadow-hover);
+
 }
 
 .btn-bg .modal-tabs {
@@ -3407,7 +3440,7 @@ html {
     padding: 12px 16px;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-left: 3px solid var(--highlight-color);
+    border-left: 2px solid transparent;
     box-shadow: var(--shadow-drop);
     display: flex;
     flex-direction: column;
@@ -3441,9 +3474,7 @@ html {
     background: var(--panel-bg);
 }
 
-.snippet-btn-bg .snippet-item--set {
-    border-left: 3px solid var(--highlight);
-}
+
 
 .snippet-btn-bg:hover .snippet-item--set {
     border-left-color: var(--highlight-color);
