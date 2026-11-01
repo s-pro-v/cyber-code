@@ -66,6 +66,7 @@
     --filter-icon-hover: invert(24%) sepia(93%) saturate(2130%) hue-rotate(353deg) brightness(97%) contrast(108%);
     --filter-icon-success: invert(55%) sepia(44%) saturate(551%) hue-rotate(89deg) brightness(93%) contrast(97%);
     --filter-icon-danger: invert(36%) sepia(83%) saturate(2030%) hue-rotate(353deg) brightness(97%) contrast(108%);
+    --filter-icon-js: invert(84%) sepia(56%) saturate(687%) hue-rotate(352deg) brightness(101%) contrast(92%);
     --metal-gradient: linear-gradient(165deg, var(--bg-primary) 0%, var(--panel-bg) 45%, var(--border-color-hover) 100%);
     --stripe-accent: rgba(0, 0, 0, 0.06);
     --bg-stripe-pattern: linear-gradient(135deg,
@@ -175,6 +176,7 @@
     --filter-icon-hover: invert(36%) sepia(83%) saturate(2030%) hue-rotate(353deg) brightness(97%) contrast(108%);
     --filter-icon-success: invert(55%) sepia(44%) saturate(551%) hue-rotate(89deg) brightness(93%) contrast(97%);
     --filter-icon-danger: invert(36%) sepia(83%) saturate(2030%) hue-rotate(353deg) brightness(97%) contrast(108%);
+    --filter-icon-js: invert(84%) sepia(56%) saturate(687%) hue-rotate(352deg) brightness(101%) contrast(92%);
     --metal-gradient: linear-gradient(165deg, var(--panel-bg) 0%, var(--bg-primary) 45%, var(--bg-tertiary) 100%);
     --stripe-accent: rgba(255, 255, 255, 0.06);
     --bg-stripe-pattern: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-tertiary) 25%, var(--stripe-accent) 25%, var(--stripe-accent) 50%, var(--bg-tertiary) 50%, var(--bg-tertiary) 75%, var(--stripe-accent) 75%, var(--stripe-accent) 100%);
@@ -279,8 +281,9 @@ i {
     display: flex;
     flex-grow: 1;
     overflow: hidden;
-    padding: 0rem 0.125rem 0.125rem;
+    padding: 0rem 0 0;
     gap: 0rem;
+    margin: 0px 0 -8px 0;
 }
 
 /* --- BUTTONS --- */
@@ -316,15 +319,23 @@ i {
 .btn i {
     font-size: 0.875rem;
     min-width: 20px;
-    transition: all 0.2s;
+    pointer-events: none;
+    transform-origin: center center;
+    backface-visibility: hidden;
+    will-change: transform;
+    transform: translateZ(0);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
 }
 
-.btn:hover i {
+.btn:hover i,
+.btn:focus-visible i {
     color: var(--text-color);
+    transform: scale(1.22) translateZ(0);
 }
 
 .btn:active i {
     color: var(--text-muted);
+    transform: scale(1) translateZ(0);
 }
 
 .separator {
@@ -587,7 +598,12 @@ i {
     font-size: 1.15rem;
     line-height: 1;
     opacity: 0.7;
-    transition: all 0.2s;
+    pointer-events: none;
+    transform-origin: center center;
+    backface-visibility: hidden;
+    will-change: transform;
+    transform: translateZ(0);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, color 0.2s ease;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -615,6 +631,7 @@ i {
 .tab-group-vertical .editor-tab:hover i,
 .tab-group-vertical .editor-tab.active i {
     opacity: 1;
+    transform: scale(1.22) translateZ(0);
 }
 
 .tab-group-vertical .editor-tab:hover {
@@ -683,13 +700,17 @@ iframe {
     background: var(--bg);
     border-top: 1px solid var(--border-color);
     display: flex;
-    align-items: center;
-    padding: 0.2rem 1rem;
-    font-size: 0.7rem;
+    padding: 0.25rem 1rem;
+    font-size: 0.6rem;
     justify-content: space-between;
     font-family: "JetBrains Mono", "Share Tech Mono", monospace;
     color: var(--text-muted);
-    z-index: 50;
+    z-index: 99;
+    box-shadow: var(--shadow-drop);
+    height: 20px;
+    flex-direction: row;
+    align-items: center;
+    margin: 0px;
 }
 
 .status-item {
@@ -3756,4 +3777,105 @@ html {
     flex-direction: column;
     gap: 1px;
     flex-shrink: 0;
+}
+
+.separator_pion {
+    width: 100%;
+    height: 10%;
+    background-color: var(--border-color);
+    box-shadow: var(--shadow-drop);
+    background: var(--bg-tertiary);
+    z-index: 0;
+    border: 1px solid var(--border-color);
+}
+
+.lr {
+    height: 60px;
+    z-index: 1;
+    display: inline-grid;
+    place-items: center;
+    color: var(--text-muted);
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.lr:hover {
+    background: var(--hover-bg);
+    color: var(--text-color);
+}
+
+.btn:has(.folder-icon) {
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid var(--border-color);
+}
+
+.folder-icon {
+    grid-area: 1 / 1;
+    width: 21px;
+    height: 21px;
+    pointer-events: none;
+    filter: var(--filter-icon);
+    opacity: 0.6;
+    transform: scale(1) translateZ(0);
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center center;
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+}
+
+#download-btn .folder-icon {
+    width: 23px;
+    height: 23px;
+}
+
+.btn:hover .folder-icon,
+.btn:focus-visible .folder-icon {
+    opacity: 1;
+    transform: scale(1.22) translateZ(0);
+}
+
+.btn:active .folder-icon {
+    opacity: 0.75;
+    transform: scale(1) translateZ(0);
+}
+
+.btn .folder-icon--open {
+    opacity: 0;
+}
+
+.btn:hover .folder-icon--closed,
+.btn:focus-visible .folder-icon--closed {
+    opacity: 0;
+}
+
+.btn:hover .folder-icon--open,
+.btn:focus-visible .folder-icon--open {
+    opacity: 1;
+    transform: scale(1.22) translateZ(0);
+}
+
+.btn:active .folder-icon--closed {
+    opacity: 0;
+}
+
+.btn:active .folder-icon--open {
+    opacity: 0.75;
+    transform: scale(1) translateZ(0);
+}
+
+#load-btn:hover {
+    color: var(--lang-js);
+}
+
+#load-btn:hover .folder-icon,
+#load-btn:focus-visible .folder-icon {
+    filter: var(--filter-icon-js);
+    opacity: 0.8;
+    transform: scale(1.22) translateZ(0);
+}
+
+#load-btn:active .folder-icon {
+    filter: var(--filter-icon-js);
+    opacity: 0.8;
+    transform: scale(1) translateZ(0);
 }

@@ -175,12 +175,8 @@
 
             <div class="control-deck">
                 <button id="new-btn" class="btn" title="New Project (Ctrl+N)"><i class="fas fa-plus i-add"></i></button>
-                <button id="load-btn" class="btn " title="Open Project (Ctrl+O)"><i
-                        class="fas fa-folder-open i-bg"></i></button>
-                <button id="save-btn" class="btn btn-primary" title="Save Project (Ctrl+S)"><i
-                        class="fas fa-save i-save"></i></button>
-                <button id="download-btn" class="btn" title="Download HTML"><i
-                        class="fas fa-download i-download"></i></button>
+
+
                 <button id="export-projects-btn" class="btn" title="Eksport zapisanych projektów (JSON)"><i
                         class="fas fa-file-export i-export"></i></button>
                 <input type="file" id="import-projects-input" accept=".json,application/json" hidden
@@ -319,7 +315,21 @@
                                 <i class="fab fa-js"></i>
                                 <span>JS</span>
                             </div>
-
+                            <div class="separator_pion"></div>
+                            <button id="load-btn" class="btn lr" title="Open Project (Ctrl+O)">
+                                <img src="https://api.iconify.design/qlementine-icons/folder-open-16.svg" alt=""
+                                    aria-hidden="true" class="folder-icon" width="21" height="21">
+                            </button>
+                            <button id="save-btn" class="btn lr" title="Save Project (Ctrl+S)">
+                                <img src="https://api.iconify.design/qlementine-icons/add-folder-16.svg" alt=""
+                                    aria-hidden="true" class="folder-icon" width="21" height="21">
+                            </button>
+                            <button id="download-btn" class="btn lr" title="Download HTML">
+                                <img src="https://api.iconify.design/line-md/downloading.svg" alt=""
+                                    aria-hidden="true" class="folder-icon folder-icon--closed" width="23" height="23">
+                                <img src="https://api.iconify.design/line-md/downloading-loop.svg" alt=""
+                                    aria-hidden="true" class="folder-icon folder-icon--open" width="23" height="23">
+                            </button>
                             <div class="bg-panel">
                             </div>
                         </div>
